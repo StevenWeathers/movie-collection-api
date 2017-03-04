@@ -41,35 +41,6 @@ const Movie = new GraphQLObjectType({
   }
 });
 
-const schema = new GraphQLSchema({
-  query: new GraphQLObjectType({
-    name: 'MovieQuery',
-    fields: { // fields define the root of our query
-      movie: {
-        type: Movie,
-        args: { // arguments we accept from the query
-          ID: {
-            type: GraphQLID
-          }
-        },
-        resolve: function(_, args) {
-
-          return movie.find(movie => {
-            return movie.ID === args.ID
-          });
-        }
-      },
-      movies: {
-        type: new GraphQLList(Movie),
-        resolve: function(_, args) {
-          return movies;
-        }
-      }
-    }
-  }),
-});
-
-
 const secretKey = process.env.jwtkey || "everythingisawesome";
 const jwtAlgorithm = process.env.jwtalgo || "HS256";
 
@@ -149,6 +120,34 @@ server.route({
         ID: "2"
       }
     ];
+
+    const schema = new GraphQLSchema({
+      query: new GraphQLObjectType({
+        name: 'MovieQuery',
+        fields: { // fields define the root of our query
+          movie: {
+            type: Movie,
+            args: { // arguments we accept from the query
+              ID: {
+                type: GraphQLID
+              }
+            },
+            resolve: function(_, args) {
+
+              return movie.find(movie => {
+                return movie.ID === args.ID
+              });
+            }
+          },
+          movies: {
+            type: new GraphQLList(Movie),
+            resolve: function(_, args) {
+              return movies;
+            }
+          }
+        }
+      }),
+    });
 
     const defaultData = `
       {
