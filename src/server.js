@@ -3,10 +3,14 @@
 const Hapi = require("hapi");
 const server = new Hapi.Server();
 const HapiAuthJWT = require("hapi-auth-jwt");
-const { graphql, GraphQLSchema, GraphQLObjectType, GraphQLID, GraphQLString, GraphQLList } = require('graphql');
+
+const cassandradriver = require("cassandra-driver");
+const cassandra = new cassandradriver.Client({ contactPoints: ["db"], keyspace: "moviecollection" });
+
+const { graphql, GraphQLSchema, GraphQLObjectType, GraphQLID, GraphQLString, GraphQLList } = require("graphql");
 
 const Movie = new GraphQLObjectType({
-  name: 'Movie',
+  name: "Movie",
   fields: {
     ID: {
       type: GraphQLID
@@ -23,7 +27,7 @@ const Movie = new GraphQLObjectType({
     Status: {
       type: GraphQLString
     },
-    Sound: {
+    Sound: {aaaa
       type: GraphQLString
     },
     Year: {
@@ -60,8 +64,8 @@ server.register(HapiAuthJWT, (err) => {
 });
 
 server.route({
-  path: '/auth',
-  method: 'POST',
+  path: "/auth",
+  method: "POST",
   handler: (request, reply) => {
 
     const { username, password } = request.payload;
@@ -76,7 +80,7 @@ server.route({
         // scope: user.guid,
       }, secretKey, {
         algorithm: jwtAlgorithm,
-        expiresIn: '1h'
+        expiresIn: "1h"
       });
 
       return reply({
@@ -84,16 +88,16 @@ server.route({
         // scope: user.guid,
       });
     } else {
-      return reply( 'incorrect password' );
+      return reply( "incorrect password" );
     }
   }
 });
 
 // Add the route
 server.route({
-  method: 'GET',
-  path:'/movies',
-  handler: function (request, reply) {
+  method: "GET",
+  path:"/movies",
+  handler: (request, reply) => {
 
     // @TODO - get data from DB
     const movies = [
@@ -121,34 +125,6 @@ server.route({
       }
     ];
 
-    const schema = new GraphQLSchema({
-      query: new GraphQLObjectType({
-        name: 'MovieQuery',
-        fields: { // fields define the root of our query
-          movie: {
-            type: Movie,
-            args: { // arguments we accept from the query
-              ID: {
-                type: GraphQLID
-              }
-            },
-            resolve: function(_, args) {
-
-              return movie.find(movie => {
-                return movie.ID === args.ID
-              });
-            }
-          },
-          movies: {
-            type: new GraphQLList(Movie),
-            resolve: function(_, args) {
-              return movies;
-            }
-          }
-        }
-      }),
-    });
-
     const defaultData = `
       {
         movies {
@@ -167,12 +143,51 @@ server.route({
 
     const requestedData = (request.query.query) ? request.query.query : defaultData;
 
-    return graphql(schema, requestedData, movies).then((response) => {
+    const moviesQuery = "SELECT * FROM movies";
 
-      console.log(response);
+    return cassandra.execute(moviesQuery)
+      .then((result) => {
+        console.log(result.rows);
 
-      return reply(response);
+        const schema = new GraphQLSchema({
+          query: new GraphQLObjectType({
+            name: "MovieQuery",
+            fields: { // fields define the root of our query
+              movie: {
+                type: Movie,
+                args: { // arguments we accept from the query
+                  ID: {
+                    type: GraphQLID
+                  }
+                },
+                resolve: (_, args) => {
 
+                  return movie.find(movie => {
+                    return movie.ID === args.ID
+                  });
+                }
+              },
+              movies: {
+                type: new GraphQLList(Movie),
+                resolve: (_, args) => {
+                  return movies;
+                }
+              }
+            }
+          }),
+        });
+
+        return graphql(schema, requestedData, movies).then((response) => {
+
+          return reply(response);
+
+        });
+
+    })
+    .catch((error) => {
+      console.error(error);
+
+      return reply(error);
     });
   }
 });
