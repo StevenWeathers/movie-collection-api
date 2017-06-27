@@ -4,16 +4,14 @@
   "main": "src/server.js",
   "author": "Steven Weathers",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node src/server.js"
   },
   "dependencies": {
-    "cassandra-driver": "^3.2.0",
     "graphql": "^0.9.1",
     "hapi": "^16.1.0",
     "hapi-auth-jwt": "^4.0.0",
-    "jsonwebtoken": "^7.3.0"
-  },
-  "scripts": {
-    "start": "node bootstrap.js"
+    "jsonwebtoken": "^7.3.0",
+    "mongodb": "^2.2.29"
   }
 }

@@ -1,4 +1,4 @@
-version: '2'
+version: "3.1"
 
 services:
   web:
@@ -7,10 +7,18 @@ services:
      - "8080:8080"
     depends_on:
       - db
+    networks:
+      - skynet
   db:
-    image: cassandra:3
+    image: mongo:3.4
     volumes:
-       - dbdata:/var/lib/cassandra
+      - dbdata:/mongo/db
+    networks:
+      - skynet
+
+networks:
+  skynet:
+    driver: bridge
 
 volumes:
   dbdata:

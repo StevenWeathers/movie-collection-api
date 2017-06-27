@@ -4,8 +4,11 @@ const Hapi = require("hapi");
 const server = new Hapi.Server();
 const HapiAuthJWT = require("hapi-auth-jwt");
 
-const cassandradriver = require("cassandra-driver");
-const cassandra = new cassandradriver.Client({ contactPoints: ["db"], keyspace: "moviecollection" });
+const MongoClient = require("mongodb").MongoClient;
+const mongoHost = process.env.mongo_host || "db";
+const mongoPort = process.env.mongo_port || "27017";
+const mongoCollection = process.env.mongo_collection || "moviecollection";
+const mongoDbUrl = `mongodb://${mongoHost}:${mongoPort}/${mongoCollection}`;
 
 const { graphql, GraphQLSchema, GraphQLObjectType, GraphQLID, GraphQLString, GraphQLList } = require("graphql");
 
@@ -27,7 +30,7 @@ const Movie = new GraphQLObjectType({
     Status: {
       type: GraphQLString
     },
-    Sound: {aaaa
+    Sound: {
       type: GraphQLString
     },
     Year: {
@@ -99,32 +102,6 @@ server.route({
   path:"/movies",
   handler: (request, reply) => {
 
-    // @TODO - get data from DB
-    const movies = [
-      {
-        DVD_Title: "Doctor Strange",
-        Studio: "Marvel",
-        Released: "2016",
-        Status: "Released",
-        Sound: "Atmos",
-        Year: "2016",
-        Genre: "Science Fiction",
-        UPC: "1337007",
-        ID: "1"
-      },
-      {
-        DVD_Title: "Star Wars Rogue One",
-        Studio: "Lucus Arts",
-        Released: "2016",
-        Status: "Released",
-        Sound: "Atmos",
-        Year: "2016",
-        Genre: "Science Fiction",
-        UPC: "1337006",
-        ID: "2"
-      }
-    ];
-
     const defaultData = `
       {
         movies {
@@ -143,11 +120,40 @@ server.route({
 
     const requestedData = (request.query.query) ? request.query.query : defaultData;
 
-    const moviesQuery = "SELECT * FROM movies";
+    return MongoClient.connect(mongoDbUrl, (err, db) => {
+      const collection = db.collection('movies');
 
-    return cassandra.execute(moviesQuery)
-      .then((result) => {
-        console.log(result.rows);
+      // temporary hack to insert dummy movies for development, to be removed completely later
+      // const movies = [
+      //   {
+      //     DVD_Title: "Doctor Strange",
+      //     Studio: "Marvel",
+      //     Released: "2016",
+      //     Status: "Released",
+      //     Sound: "Atmos",
+      //     Year: "2016",
+      //     Genre: "Science Fiction",
+      //     UPC: "1337007",
+      //     ID: "1"
+      //   },
+      //   {
+      //     DVD_Title: "Star Wars Rogue One",
+      //     Studio: "Lucus Arts",
+      //     Released: "2016",
+      //     Status: "Released",
+      //     Sound: "Atmos",
+      //     Year: "2016",
+      //     Genre: "Science Fiction",
+      //     UPC: "1337006",
+      //     ID: "2"
+      //   }
+      // ];
+      // collection.insertMany(movies, (err, result) => {
+      //   console.log("Inserted 3 documents into the document collection");
+      // });
+
+      return collection.find({}).toArray((err, movies) => {
+        db.close();
 
         const schema = new GraphQLSchema({
           query: new GraphQLObjectType({
@@ -170,6 +176,7 @@ server.route({
               movies: {
                 type: new GraphQLList(Movie),
                 resolve: (_, args) => {
+
                   return movies;
                 }
               }
@@ -180,14 +187,8 @@ server.route({
         return graphql(schema, requestedData, movies).then((response) => {
 
           return reply(response);
-
         });
-
-    })
-    .catch((error) => {
-      console.error(error);
-
-      return reply(error);
+      });
     });
   }
 });
