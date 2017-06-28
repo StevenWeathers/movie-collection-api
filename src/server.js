@@ -6,6 +6,7 @@ Joi.objectId = require('joi-objectid')(Joi);
 const server = new Hapi.Server();
 const JWT = require("jsonwebtoken");
 const HapiAuthJWT = require("hapi-auth-jwt2");
+const bcrypt = require("bcryptjs");
 
 const {MongoClient, ObjectId} = require("mongodb");
 const mongoHost = process.env.mongo_host || "db";
@@ -54,6 +55,18 @@ const Movie = new GraphQLObjectType({
   }
 });
 
+const User = new GraphQLObjectType({
+  name: "User",
+  fields: {
+    email: {
+      type: GraphQLString
+    },
+    _id: {
+      type: GraphQLString
+    }
+  }
+});
+
 // Joi Validation Schemas
 const movieSchema = Joi.object().keys({
     DVD_Title: Joi.string().required(),
@@ -69,6 +82,13 @@ const movieSchema = Joi.object().keys({
 
 const moviesSchema = Joi.array().items(movieSchema);
 
+const passwordRegex = new RegExp("^(((?=.*[a-z])(?=.*[A-Z]))|((?=.*[a-z])(?=.*[0-9]))|((?=.*[A-Z])(?=.*[0-9])))(?=.{8,})");
+const passwordErrorText = "Password doesn't meet minimum requirements";
+const userSchema = Joi.object().keys({
+    email: Joi.string().email().required(),
+    password: Joi.string().regex(passwordRegex).required().error(new Error(passwordErrorText))
+});
+
 // JWT settings
 const secretKey = process.env.jwtkey || "everythingisawesome";
 const jwtAlgorithm = process.env.jwtalgo || "HS256";
@@ -80,22 +100,22 @@ server.connection({
 
 server.register(HapiAuthJWT, (err) => {
 
-  // @TODO - update validate to read from a DB and validate session
   const validate = (decoded, request, callback) => {
-    const session = {
-      index : "time",
-      type  : "session",
-      id    : decoded.jti  // use SESSION ID as key for sessions
-    }; // jti? >> http://self-issued.info/docs/draft-ietf-oauth-json-web-token.html#jtiDef
+    console.log(decoded);
 
-    // ES.READ(session, function(res){
-    //   if (res.found && !res._source.ended) {
-    //     return callback(null, true); // session is valid
-    //   } else {
-    //     return callback(null, false); // session expired
-    //   }
-    // });
-    return callback(null, true); // session is valid
+    return MongoClient.connect(mongoDbUrl, (err, db) => {
+      const collection = db.collection("users");
+
+      return collection.findOne({ "email": decoded.email }, (err, user) => {
+        db.close();
+
+        if (user) {
+          return callback(null, true); // session is valid
+        } else {
+          return callback(null, false); // session expired
+        }
+      });
+    });
   };
 
   server.auth.strategy("jwt", "jwt", {
@@ -106,8 +126,7 @@ server.register(HapiAuthJWT, (err) => {
     }
   });
 
-  // @todo - add auth by default, turn off for GET and Auth routes
-  // server.auth.default('jwt');
+  server.auth.default('jwt');
 
 });
 
@@ -115,29 +134,279 @@ server.register(HapiAuthJWT, (err) => {
 server.route({
   path: "/auth",
   method: "POST",
-  handler: (request, reply) => {
+  config: {
+    auth: false,
+    handler: (request, reply) => {
 
-    const { username, password } = request.payload;
+      const { email, password } = request.payload;
 
-    // @TODO - hook up DB query to get user by username to compare passwords
+      return MongoClient.connect(mongoDbUrl, (err, db) => {
+        const collection = db.collection("users");
 
-    // Honestly, this is VERY insecure. Use some salted-hashing algorithm and then compare it.
-    // user.password === password
-    if (password) {
-      const token = JWT.sign({
-        username,
-        // scope: user.guid,
-      }, secretKey, {
-        algorithm: jwtAlgorithm,
-        expiresIn: jwtExpires
+        return collection.findOne({ "email": email }, (err, user) => {
+          db.close();
+
+          if (user !== null && bcrypt.compareSync(password, user.password)) {
+            const token = JWT.sign({
+              email
+            }, secretKey, {
+              algorithm: jwtAlgorithm,
+              expiresIn: jwtExpires
+            });
+
+            return reply({
+              token
+            });
+          } else {
+            return reply({
+                "statusCode": 401,
+                "error": "Unauthorized",
+                "message": "Incorrect email/password combination"
+            }).code(401);
+          }
+        });
       });
+    },
+    validate: {
+      payload: userSchema
+    }
+  }
+});
 
-      return reply({
-        token,
-        // scope: user.guid,
+// Route to get all the users
+server.route({
+  method: "GET",
+  path:"/users",
+  config: {
+    handler: (request, reply) => {
+
+      const defaultData = `
+        {
+          users {
+            email
+            password
+            _id
+          }
+        }
+      `;
+
+      const requestedData = (request.query.query) ? request.query.query : defaultData;
+
+      return MongoClient.connect(mongoDbUrl, (err, db) => {
+        const collection = db.collection("users");
+
+        // @TODO - add the schema and support for users to GraphQL
+        return collection.find({}, {"password": false}).toArray((err, users) => {
+          db.close();
+
+          const schema = new GraphQLSchema({
+            query: new GraphQLObjectType({
+              name: "UserQuery",
+              fields: { // fields define the root of our query
+                user: {
+                  type: User,
+                  args: { // arguments we accept from the query
+                    _id: {
+                      type: GraphQLString
+                    }
+                  },
+                  resolve: (_, args) => {
+
+                    return user.find(user => {
+                      return user._id === args._id
+                    });
+                  }
+                },
+                users: {
+                  type: new GraphQLList(User),
+                  resolve: (_, args) => {
+
+                    return users;
+                  }
+                }
+              }
+            }),
+          });
+
+          return graphql(schema, requestedData, users).then((response) => {
+
+            return reply(response);
+          });
+        });
       });
-    } else {
-      return reply( "incorrect password" );
+    }
+  }
+});
+
+// Route to Get a User by ID
+server.route({
+  method: "GET",
+  path:"/users/{id}",
+  config:{
+    handler: (request, reply) => {
+      const userId = request.params.id;
+
+      const defaultData = `
+        {
+          users {
+            email
+            password
+            _id
+          }
+        }
+      `;
+
+      const requestedData = (request.query.query) ? request.query.query : defaultData;
+
+      return MongoClient.connect(mongoDbUrl, (err, db) => {
+        const collection = db.collection("users");
+
+        return collection.find({ "_id": ObjectId(userId) }, {"password": false}).toArray((err, users) => {
+          db.close();
+
+          const schema = new GraphQLSchema({
+            query: new GraphQLObjectType({
+              name: "UserQuery",
+              fields: { // fields define the root of our query
+                user: {
+                  type: User,
+                  args: { // arguments we accept from the query
+                    _id: {
+                      type: GraphQLString
+                    }
+                  },
+                  resolve: (_, args) => {
+
+                    return user.find(user => {
+                      return user._id === args._id
+                    });
+                  }
+                },
+                users: {
+                  type: new GraphQLList(User),
+                  resolve: (_, args) => {
+
+                    return users;
+                  }
+                }
+              }
+            }),
+          });
+
+          return graphql(schema, requestedData, users).then((response) => {
+
+            return reply(response);
+          });
+        });
+      });
+    },
+    validate: {
+        params: {
+          id: Joi.objectId()
+        }
+    }
+  }
+});
+
+// Route to Add users(s) to manage the collection
+server.route({
+  method: "POST",
+  path:"/users",
+  config:{
+    handler: (request, reply) => {
+      const user = request.payload;
+
+      return MongoClient.connect(mongoDbUrl, (err, db) => {
+        const collection = db.collection("users");
+
+        return collection.findOne({ "email": user.email }, (err, foundUser) => {
+          if (!foundUser) {
+            return bcrypt.genSalt(10, function(err, salt) {
+              return bcrypt.hash(user.password, salt, function(err, hash) {
+                user.password = hash;
+
+                return collection.insertOne(user, (err, result) => {
+                  db.close();
+
+                  delete result.ops[0].password;
+
+                  return reply(result.ops[0]);
+                });
+              });
+            });
+          } else {
+            db.close();
+
+            return reply({
+                "statusCode": 409,
+                "error": "Existing User",
+                "message": "User with that email already exists."
+            }).code(409);
+          }
+        });
+      });
+    },
+    validate: {
+      payload: userSchema
+    }
+  }
+});
+
+// Route to Update a User
+server.route({
+  method: "PUT",
+  path:"/users/{id}",
+  config:{
+    handler: (request, reply) => {
+      const userId = request.params.id;
+      const user = request.payload;
+
+      if (typeof user.password !== "undefined") {
+        const salt = bcrypt.genSaltSync(10);
+        user.password = bcrypt.hashSync(user.password, salt);
+      }
+
+      return MongoClient.connect(mongoDbUrl, (err, db) => {
+        const collection = db.collection("users");
+
+        return collection.updateOne({ _id: ObjectId(userId) }, { $set: user }, (err, result) => {
+          db.close();
+
+          return reply(result);
+        });
+      });
+    },
+    validate: {
+      params: {
+        id: Joi.objectId()
+      },
+      payload: userSchema.optionalKeys("email","password").min(1)
+    }
+  }
+});
+
+// Route to Delete a User
+server.route({
+  method: "DELETE",
+  path:"/users/{id}",
+  config:{
+    handler: (request, reply) => {
+      const userId = request.params.id;
+
+      return MongoClient.connect(mongoDbUrl, (err, db) => {
+        const collection = db.collection("users");
+
+        return collection.deleteOne({ _id: ObjectId(userId) }, (err, result) => {
+          db.close();
+
+          return reply(result);
+        });
+      });
+    },
+    validate: {
+      params: {
+        id: Joi.objectId()
+      }
     }
   }
 });
@@ -146,97 +415,71 @@ server.route({
 server.route({
   method: "GET",
   path:"/movies",
-  handler: (request, reply) => {
+  config: {
+    auth: false,
+    handler: (request, reply) => {
 
-    const defaultData = `
-      {
-        movies {
-          DVD_Title
-          Studio
-          Released
-          Status
-          Sound
-          Year
-          Genre
-          UPC
-          ID
-          _id
+      const defaultData = `
+        {
+          movies {
+            DVD_Title
+            Studio
+            Released
+            Status
+            Sound
+            Year
+            Genre
+            UPC
+            ID
+            _id
+          }
         }
-      }
-    `;
+      `;
 
-    const requestedData = (request.query.query) ? request.query.query : defaultData;
+      const requestedData = (request.query.query) ? request.query.query : defaultData;
 
-    return MongoClient.connect(mongoDbUrl, (err, db) => {
-      const collection = db.collection("movies");
+      return MongoClient.connect(mongoDbUrl, (err, db) => {
+        const collection = db.collection("movies");
 
-      // temporary hack to insert dummy movies for development, to be removed completely later
-      // const movies = [
-      //   {
-      //     DVD_Title: "Doctor Strange",
-      //     Studio: "Marvel",
-      //     Released: "2016",
-      //     Status: "Released",
-      //     Sound: "Atmos",
-      //     Year: "2016",
-      //     Genre: "Science Fiction",
-      //     UPC: "1337007",
-      //     ID: "1"
-      //   },
-      //   {
-      //     DVD_Title: "Star Wars Rogue One",
-      //     Studio: "Lucus Arts",
-      //     Released: "2016",
-      //     Status: "Released",
-      //     Sound: "Atmos",
-      //     Year: "2016",
-      //     Genre: "Science Fiction",
-      //     UPC: "1337006",
-      //     ID: "2"
-      //   }
-      // ];
-      // collection.insertMany(movies, (err, result) => {
-      //   console.log("Inserted 3 documents into the document collection");
-      // });
+        return collection.find({}).toArray((err, movies) => {
+          db.close();
 
-      return collection.find({}).toArray((err, movies) => {
-        db.close();
+          const schema = new GraphQLSchema({
+            query: new GraphQLObjectType({
+              name: "MovieQuery",
+              fields: { // fields define the root of our query
+                movie: {
+                  type: Movie,
+                  args: { // arguments we accept from the query
+                    ID: {
+                      type: GraphQLID
+                    }
+                  },
+                  resolve: (_, args) => {
 
-        const schema = new GraphQLSchema({
-          query: new GraphQLObjectType({
-            name: "MovieQuery",
-            fields: { // fields define the root of our query
-              movie: {
-                type: Movie,
-                args: { // arguments we accept from the query
-                  ID: {
-                    type: GraphQLID
+                    return movie.find(movie => {
+                      return movie.ID === args.ID
+                    });
                   }
                 },
-                resolve: (_, args) => {
+                movies: {
+                  type: new GraphQLList(Movie),
+                  resolve: (_, args) => {
 
-                  return movie.find(movie => {
-                    return movie.ID === args.ID
-                  });
-                }
-              },
-              movies: {
-                type: new GraphQLList(Movie),
-                resolve: (_, args) => {
-
-                  return movies;
+                    return movies;
+                  }
                 }
               }
-            }
-          }),
-        });
+            }),
+          });
 
-        return graphql(schema, requestedData, movies).then((response) => {
+          return graphql(schema, requestedData, movies).then((response) => {
 
-          return reply(response);
+            return reply(response);
+          });
         });
       });
-    });
+    }
   }
 });
 
@@ -259,9 +502,9 @@ server.route({
       });
     },
     validate: {
-        payload: {
-          movies: moviesSchema
-        }
+      payload: {
+        movies: moviesSchema
+      }
     }
   }
 });
@@ -271,6 +514,7 @@ server.route({
   method: "GET",
   path:"/movies/{id}",
   config:{
+    auth: false,
     handler: (request, reply) => {
       const movieId = request.params.id;
 
@@ -336,9 +580,9 @@ server.route({
       });
     },
     validate: {
-        params: {
-          id: Joi.objectId()
-        }
+      params: {
+        id: Joi.objectId()
+      }
     }
   }
 });
@@ -363,10 +607,10 @@ server.route({
       });
     },
     validate: {
-        params: {
-          id: Joi.objectId()
-        },
-        payload: movieSchema
+      params: {
+        id: Joi.objectId()
+      },
+      payload: movieSchema
     }
   }
 });
@@ -390,9 +634,9 @@ server.route({
       });
     },
     validate: {
-        params: {
-          id: Joi.objectId()
-        }
+      params: {
+        id: Joi.objectId()
+      }
     }
   }
 });

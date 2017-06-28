@@ -8,6 +8,7 @@
     "start": "node src/server.js"
   },
   "dependencies": {
+    "bcryptjs": "^2.4.3",
     "graphql": "^0.9.1",
     "hapi": "^16.4.3",
     "hapi-auth-jwt2": "^7.3.0",

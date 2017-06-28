@@ -1,7 +1,8 @@
 Movie Collection API
 =======
 
-Runs on Docker, Node 6.x
+Runs on Docker, Node 8.x
+Requires authentication to modify content
 
 ```
 docker build -t moviecollectionapi .
@@ -9,7 +10,7 @@ docker build -t moviecollectionapi .
 docker run -d -p "3000:3000" --name moviecollectionapi moviecollectionapi
 ```
 
-## Example Movies List response
+## Example Get Movies
 ### Path
 ```
   /movies
@@ -73,10 +74,113 @@ docker run -d -p "3000:3000" --name moviecollectionapi moviecollectionapi
 }
 ```
 
-## Example POST Movie Response
+## Example POST Auth
+### Path
+```
+  /auth
+```
+### Request payload
+```json
+{
+  email: "jamesbond@mi6.co.uk",
+  password: "secretagent007"
+}
+```
+### Response
+```json
+{
+    "token": "<jwtToken>"
+}
+```
+
+## Example POST User
+### Path
+```
+  /users
+```
+### Request Headers
+```
+"Authorization: <jwtToken>"
+```
+### Request payload
+```json
+{
+  email: "jamesbond@mi6.co.uk",
+  password: "secretagent007"
+}
+```
+### Password Requirements
+```
+must contain eight characters or more
+at least one lowercase and one uppercase alphabetical character
+or has at least one lowercase and one numeric character
+or has at least one uppercase and one numeric character
+```
+### Response
+```json
+{
+    "email": "jamesbond@mi6.co.uk",
+    "_id": "<_id>"
+}
+```
+
+## Example PUT User
+### Path
+```
+  /users/<userId>
+```
+### Request Headers
+```
+"Authorization: <jwtToken>"
+```
+### Request payload
+```json
+{
+  email: "jamesbond@mi6.co.uk",
+  password: "secretagent007"
+}
+```
+### Password Requirements
+```
+must contain eight characters or more
+at least one lowercase and one uppercase alphabetical character
+or has at least one lowercase and one numeric character
+or has at least one uppercase and one numeric character
+```
+### Response
+```json
+{
+    "n": 1,
+    "nModified": 1,
+    "ok": 1
+}
+```
+
+## Example DELETE User by ID
+### Path
+```
+  /users/<userId>
+```
+### Request Headers
+```
+"Authorization: <jwtToken>"
+```
+### Response
+```json
+{
+    "n": 1,
+    "ok": 1
+}
+```
+
+## Example POST Movie
 ### Path
 ```
   /movies
+```
+### Request Headers
+```
+"Authorization: <jwtToken>"
 ```
 ### Request payload
 ```json
@@ -114,7 +218,7 @@ docker run -d -p "3000:3000" --name moviecollectionapi moviecollectionapi
 ]
 ```
 
-## Example Movie by ID response
+## Example Movie by ID
 ### Path
 ```
   /movies/5952f8f3a8c87e00117f972f
@@ -141,10 +245,14 @@ docker run -d -p "3000:3000" --name moviecollectionapi moviecollectionapi
 }
 ```
 
-## Example PUT Movie by ID Response
+## Example PUT Movie by ID
 ### Path
 ```
   /movies/5952f8f3a8c87e00117f972f
+```
+### Request Headers
+```
+"Authorization: <jwtToken>"
 ```
 ### Request payload
 ```json
@@ -169,10 +277,14 @@ docker run -d -p "3000:3000" --name moviecollectionapi moviecollectionapi
 }
 ```
 
-## Example DELETE Movie by ID Response
+## Example DELETE Movie by ID
 ### Path
 ```
   /movies/5952f8f3a8c87e00117f972f
+```
+### Request Headers
+```
+"Authorization: <jwtToken>"
 ```
 ### Response
 ```json
