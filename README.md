@@ -2,6 +2,7 @@ Movie Collection API
 =======
 
 Runs on Docker, Node 8.x
+
 Requires authentication to modify content
 
 ```
