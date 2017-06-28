@@ -106,8 +106,8 @@ docker run -d -p "3000:3000" --name moviecollectionapi moviecollectionapi
 ### Request payload
 ```json
 {
-  email: "jamesbond@mi6.co.uk",
-  password: "secretagent007"
+  "email": "jamesbond@mi6.co.uk",
+  "password": "secretagent007"
 }
 ```
 ### Password Requirements
@@ -137,8 +137,8 @@ or has at least one uppercase and one numeric character
 ### Request payload
 ```json
 {
-  email: "jamesbond@mi6.co.uk",
-  password: "secretagent007"
+  "email": "jamesbond@mi6.co.uk",
+  "password": "secretagent007"
 }
 ```
 ### Password Requirements
