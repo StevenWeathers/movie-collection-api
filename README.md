@@ -9,16 +9,6 @@ docker build -t moviecollectionapi .
 docker run -d -p "3000:3000" --name moviecollectionapi moviecollectionapi
 ```
 
-##Example Collection Request
-```
-http://localhost:8080/movies
-```
-
-##Example GraphQL Collection Request
-```
-http://localhost:8080/movies?query={movies{DVD_Title Studio Released Status Sound Year Genre UPC ID}}
-```
-
 ## Example Movies List response
 ### Path
 ```
@@ -51,6 +41,31 @@ http://localhost:8080/movies?query={movies{DVD_Title Studio Released Status Soun
                 "Genre": "Science Fiction",
                 "UPC": "1337006",
                 "ID": "2",
+                "_id": "5952dd2f7a9c930011afdf59"
+            }
+        ]
+    }
+}
+```
+
+## Example Movies List response with GraphQL query
+### Path
+```
+  /movies?query={movies{DVD_Title UPC _id}}
+```
+### Response
+```
+{
+    "data": {
+        "movies": [
+            {
+                "DVD_Title": "Doctor Strange",
+                "UPC": "1337007",
+                "_id": "5952dd2f7a9c930011afdf58"
+            },
+            {
+                "DVD_Title": "Star Wars Rogue One",
+                "UPC": "1337006",
                 "_id": "5952dd2f7a9c930011afdf59"
             }
         ]
