@@ -9,8 +9,10 @@
   },
   "dependencies": {
     "graphql": "^0.9.1",
-    "hapi": "^16.1.0",
-    "hapi-auth-jwt": "^4.0.0",
+    "hapi": "^16.4.3",
+    "hapi-auth-jwt2": "^7.3.0",
+    "joi": "^10.6.0",
+    "joi-objectid": "^2.0.0",
     "jsonwebtoken": "^7.3.0",
     "mongodb": "^2.2.29"
   }
