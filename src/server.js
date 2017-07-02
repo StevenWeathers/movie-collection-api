@@ -2,12 +2,14 @@
 
 const Hapi = require("hapi");
 const Joi = require("joi");
+const assert = require("assert");
+const passSheriff = require("password-sheriff");
 Joi.objectId = require('joi-objectid')(Joi);
 const server = new Hapi.Server();
 const JWT = require("jsonwebtoken");
 const HapiAuthJWT = require("hapi-auth-jwt2");
 const bcrypt = require("bcryptjs");
-const slugify = require("slugify")
+const slugify = require("slugify");
 
 const {MongoClient, ObjectId} = require("mongodb");
 const mongoHost = process.env.mongo_host || "db";
@@ -606,11 +608,44 @@ const formatSchema = Joi.object().keys({
     title: Joi.string().required()
 });
 
-const passwordRegex = new RegExp("^(((?=.*[a-z])(?=.*[A-Z]))|((?=.*[a-z])(?=.*[0-9]))|((?=.*[A-Z])(?=.*[0-9])))(?=.{8,})");
+// Create a custom Joi password validation utlizing password-sheriff
+const joi = Joi.extend((joi) => ({
+    base: joi.string(),
+    name: 'password',
+    language: {
+        minimum: 'needs to meet the minimum requirements'
+    },
+    rules: [
+        {
+            name: 'minimum',
+            validate(params, value, state, options) {
+              const charsets = passSheriff.charsets;
+              const joiPasswordPolicy = new passSheriff.PasswordPolicy({
+                length: {
+                  minLength: 8
+                },
+                containsAtLeast: {
+                  atLeast: 2,
+                  expressions: [ charsets.lowerCase, charsets.upperCase, charsets.numbers ]
+                }
+              });
+
+              const passwordValidation = joiPasswordPolicy.check(value);
+
+              if (!passwordValidation) {
+                  // Generate an error, state and options need to be passed
+                  return this.createError('password.minimum', { v: value }, state, options);
+              }
+
+              return value; // Everything is OK
+            }
+        }
+    ]
+}));
 const passwordErrorText = "Password doesn't meet minimum requirements";
 const userSchema = Joi.object().keys({
     email: Joi.string().email().required(),
-    password: Joi.string().regex(passwordRegex).required().error(new Error(passwordErrorText))
+    password: joi.password().minimum().required()
 });
 
 // JWT settings
