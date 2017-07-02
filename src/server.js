@@ -2,7 +2,6 @@
 
 const Hapi = require("hapi");
 const Joi = require("joi");
-const assert = require("assert");
 const passSheriff = require("password-sheriff");
 Joi.objectId = require('joi-objectid')(Joi);
 const server = new Hapi.Server();
@@ -654,7 +653,7 @@ const jwtAlgorithm = process.env.jwtalgo || "HS256";
 const jwtExpires = process.env.jwtexpires || "1h";
 
 server.connection({
-  port: 8080
+  port: process.env.PORT || 8080
 });
 
 server.register(HapiAuthJWT, (err) => {
