@@ -14,6 +14,7 @@ const mongoHost = process.env.mongo_host || "db";
 const mongoPort = process.env.mongo_port || "27017";
 const mongoCollection = process.env.mongo_collection || "moviecollection";
 const mongoDbUrl = `mongodb://${mongoHost}:${mongoPort}/${mongoCollection}`;
+const createFirstUser = process.env.create_user || false;
 
 const {
   graphql,
@@ -1201,6 +1202,24 @@ server.route({
     }
   }
 });
+
+if (createFirstUser) {
+  const firstUser = `
+    mutation UserMutation {
+      addUser(user: {
+        email: "${process.env.create_user_email}"
+        password: "${process.env.create_user_password}"
+      }) {
+        _id
+      }
+    }
+  `;
+
+  graphql(UsersSchema, firstUser).then((response) => {
+
+    return console.log(response);
+  });
+}
 
 server.start(err => {
 

@@ -9,6 +9,10 @@ services:
       - db
     networks:
       - skynet
+    # environment:
+    #   - create_user=true
+    #   - create_user_email=steven@test.com
+    #   - create_user_password=test2017
   db:
     image: mongo:3.4
     volumes:
