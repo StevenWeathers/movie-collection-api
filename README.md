@@ -309,6 +309,14 @@ Authentication is required for all Modification (Create, Update, Delete) tasks
 
 # Users
 
+To create the first user on startup, set the following environment variables
+
+```
+create_user=true
+create_user_email=<email>
+create_user_password=<password>
+```
+
 ## Example POST User
 ### Path
 ```
