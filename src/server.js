@@ -7,6 +7,7 @@ const server = new Hapi.Server();
 const JWT = require("jsonwebtoken");
 const HapiAuthJWT = require("hapi-auth-jwt2");
 const bcrypt = require("bcryptjs");
+const slugify = require("slugify")
 
 const {MongoClient, ObjectId} = require("mongodb");
 const mongoHost = process.env.mongo_host || "db";
@@ -61,9 +62,6 @@ const MovieInputType = new GraphQLInputObjectType({
     title: {
       type: new GraphQLNonNull(GraphQLString)
     },
-    slug: {
-      type: new GraphQLNonNull(GraphQLString)
-    },
     year: {
       type: new GraphQLNonNull(GraphQLString)
     },
@@ -97,17 +95,17 @@ const MoviesSchema = new GraphQLSchema({
 
           const foundMovie = new Promise((resolve, reject) => {
 
-              return MongoClient.connect(mongoDbUrl, (err, db) => {
-                const collection = db.collection("movies");
+            return MongoClient.connect(mongoDbUrl, (err, db) => {
+              const collection = db.collection("movies");
 
-                return collection.findOne({
-                  _id: ObjectId(args._id)
-                }, (err, movie) => {
-                  db.close();
+              return collection.findOne({
+                _id: ObjectId(args._id)
+              }, (err, movie) => {
+                db.close();
 
-                  err ? reject(err) : resolve(movie);
-                });
+                err ? reject(err) : resolve(movie);
               });
+            });
           });
 
           return foundMovie;
@@ -118,15 +116,15 @@ const MoviesSchema = new GraphQLSchema({
         resolve: (_, args) => {
           const foundMovies = new Promise((resolve, reject) => {
 
-              return MongoClient.connect(mongoDbUrl, (err, db) => {
-                const collection = db.collection("movies");
+            return MongoClient.connect(mongoDbUrl, (err, db) => {
+              const collection = db.collection("movies");
 
-                return collection.find({}).toArray((err, movies) => {
-                  db.close();
+              return collection.find({}).toArray((err, movies) => {
+                db.close();
 
-                  err ? reject(err) : resolve(movies);
-                });
+                err ? reject(err) : resolve(movies);
               });
+            });
           });
 
           return foundMovies;
@@ -148,16 +146,18 @@ const MoviesSchema = new GraphQLSchema({
         },
         resolve: (value, { movie }) => {
           const createdMovie = new Promise((resolve, reject) => {
+            movie.slug = slugify(`${movie.year} ${movie.title}`).toLowerCase();
 
-              return MongoClient.connect(mongoDbUrl, (err, db) => {
-                const collection = db.collection("movies");
+            return MongoClient.connect(mongoDbUrl, (err, db) => {
+              const collection = db.collection("movies");
 
-                return collection.insertOne(movie, (err, result) => {
-                  db.close();
+              return collection.insertOne(movie, (err, result) => {
+                collection.createIndex( { "slug": 1 }, { unique: true } );
+                db.close();
 
-                  err ? reject(err) : resolve(result.ops[0]);
-                });
+                err ? reject(err) : resolve(result.ops[0]);
               });
+            });
           });
 
           return createdMovie;
@@ -176,20 +176,21 @@ const MoviesSchema = new GraphQLSchema({
         },
         resolve: (value, { _id, movie }) => {
           const updatedMovie = new Promise((resolve, reject) => {
+            movie.slug = slugify(`${movie.year} ${movie.title}`).toLowerCase();
 
-              return MongoClient.connect(mongoDbUrl, (err, db) => {
-                const collection = db.collection("movies");
+            return MongoClient.connect(mongoDbUrl, (err, db) => {
+              const collection = db.collection("movies");
 
-                return collection.updateOne({
-                  _id: ObjectId(_id)
-                }, {
-                  $set: movie
-                }, (err, result) => {
-                  db.close();
+              return collection.updateOne({
+                _id: ObjectId(_id)
+              }, {
+                $set: movie
+              }, (err, result) => {
+                db.close();
 
-                  err ? reject(err) : resolve(result.modifiedCount === 1 ? { "_id": _id } : {});
-                });
+                err ? reject(err) : resolve(result.modifiedCount === 1 ? { "_id": _id } : {});
               });
+            });
           });
 
           return updatedMovie;
@@ -207,17 +208,17 @@ const MoviesSchema = new GraphQLSchema({
 
           const deletedMovie = new Promise((resolve, reject) => {
 
-              return MongoClient.connect(mongoDbUrl, (err, db) => {
-                const collection = db.collection("movies");
+            return MongoClient.connect(mongoDbUrl, (err, db) => {
+              const collection = db.collection("movies");
 
-                return collection.deleteOne({
-                  _id: ObjectId(_id)
-                }, (err, result) => {
-                  db.close();
+              return collection.deleteOne({
+                _id: ObjectId(_id)
+              }, (err, result) => {
+                db.close();
 
-                  err ? reject(err) : resolve(result.deletedCount === 1 ? { "_id": _id } : {});
-                });
+                err ? reject(err) : resolve(result.deletedCount === 1 ? { "_id": _id } : {});
               });
+            });
           });
 
           return deletedMovie;
@@ -247,9 +248,6 @@ const FormatInputType = new GraphQLInputObjectType({
   fields: () => ({
     title: {
       type: new GraphQLNonNull(GraphQLString)
-    },
-    slug: {
-      type: new GraphQLNonNull(GraphQLString)
     }
   })
 });
@@ -269,17 +267,17 @@ const FormatsSchema = new GraphQLSchema({
 
           const foundFormat = new Promise((resolve, reject) => {
 
-              return MongoClient.connect(mongoDbUrl, (err, db) => {
-                const collection = db.collection("formats");
+            return MongoClient.connect(mongoDbUrl, (err, db) => {
+              const collection = db.collection("formats");
 
-                return collection.findOne({
-                  _id: ObjectId(args._id)
-                }, (err, format) => {
-                  db.close();
+              return collection.findOne({
+                _id: ObjectId(args._id)
+              }, (err, format) => {
+                db.close();
 
-                  err ? reject(err) : resolve(format);
-                });
+                err ? reject(err) : resolve(format);
               });
+            });
           });
 
           return foundFormat;
@@ -290,15 +288,15 @@ const FormatsSchema = new GraphQLSchema({
         resolve: (_, args) => {
           const foundFormats = new Promise((resolve, reject) => {
 
-              return MongoClient.connect(mongoDbUrl, (err, db) => {
-                const collection = db.collection("formats");
+            return MongoClient.connect(mongoDbUrl, (err, db) => {
+              const collection = db.collection("formats");
 
-                return collection.find({}).toArray((err, formats) => {
-                  db.close();
+              return collection.find({}).toArray((err, formats) => {
+                db.close();
 
-                  err ? reject(err) : resolve(formats);
-                });
+                err ? reject(err) : resolve(formats);
               });
+            });
           });
 
           return foundFormats;
@@ -320,16 +318,18 @@ const FormatsSchema = new GraphQLSchema({
         },
         resolve: (value, { format }) => {
           const createdFormat = new Promise((resolve, reject) => {
+            format.slug = slugify(format.title).toLowerCase();
 
-              return MongoClient.connect(mongoDbUrl, (err, db) => {
-                const collection = db.collection("formats");
+            return MongoClient.connect(mongoDbUrl, (err, db) => {
+              const collection = db.collection("formats");
 
-                return collection.insertOne(format, (err, result) => {
-                  db.close();
+              return collection.insertOne(format, (err, result) => {
+                collection.createIndex( { "slug": 1 }, { unique: true } );
+                db.close();
 
-                  err ? reject(err) : resolve(result.ops[0]);
-                });
+                err ? reject(err) : resolve(result.ops[0]);
               });
+            });
           });
 
           return createdFormat;
@@ -348,20 +348,21 @@ const FormatsSchema = new GraphQLSchema({
         },
         resolve: (value, { _id, format }) => {
           const updatedFormat = new Promise((resolve, reject) => {
+            format.slug = slugify(format.title).toLowerCase();
 
-              return MongoClient.connect(mongoDbUrl, (err, db) => {
-                const collection = db.collection("formats");
+            return MongoClient.connect(mongoDbUrl, (err, db) => {
+              const collection = db.collection("formats");
 
-                return collection.updateOne({
-                  _id: ObjectId(_id)
-                }, {
-                  $set: format
-                }, (err, result) => {
-                  db.close();
+              return collection.updateOne({
+                _id: ObjectId(_id)
+              }, {
+                $set: format
+              }, (err, result) => {
+                db.close();
 
-                  err ? reject(err) : resolve(result.modifiedCount === 1 ? { "_id": _id } : {});
-                });
+                err ? reject(err) : resolve(result.modifiedCount === 1 ? { "_id": _id } : {});
               });
+            });
           });
 
           return updatedFormat;
@@ -379,17 +380,17 @@ const FormatsSchema = new GraphQLSchema({
 
           const deletedFormat = new Promise((resolve, reject) => {
 
-              return MongoClient.connect(mongoDbUrl, (err, db) => {
-                const collection = db.collection("formats");
+            return MongoClient.connect(mongoDbUrl, (err, db) => {
+              const collection = db.collection("formats");
 
-                return collection.deleteOne({
-                  _id: ObjectId(_id)
-                }, (err, result) => {
-                  db.close();
+              return collection.deleteOne({
+                _id: ObjectId(_id)
+              }, (err, result) => {
+                db.close();
 
-                  err ? reject(err) : resolve(result.deletedCount === 1 ? { "_id": _id } : {});
-                });
+                err ? reject(err) : resolve(result.deletedCount === 1 ? { "_id": _id } : {});
               });
+            });
           });
 
           return deletedFormat;
@@ -498,28 +499,23 @@ const UsersSchema = new GraphQLSchema({
             return MongoClient.connect(mongoDbUrl, (err, db) => {
               const collection = db.collection("users");
 
-              return collection.findOne({ "email": user.email }, (err, foundUser) => {
+              return bcrypt.genSalt(10, function(err, salt) {
 
-                if (!foundUser) {
-                  return bcrypt.genSalt(10, function(err, salt) {
+                return bcrypt.hash(user.password, salt, function(err, hash) {
+                  user.password = hash;
 
-                    return bcrypt.hash(user.password, salt, function(err, hash) {
-                      user.password = hash;
+                  return collection.insertOne(user, (err, result) => {
+                    collection.createIndex( { "email": 1 }, { unique: true } );
+                    db.close();
 
-                      return collection.insertOne(user, (err, result) => {
-                        db.close();
-
-                        delete result.ops[0].password;
-
-                        err ? reject(err) : resolve(result.ops[0]);
-                      });
-                    });
+                    if (!err) {
+                      delete result.ops[0].password;
+                      resolve(result.ops[0]);
+                    } else {
+                      reject(err);
+                    }
                   });
-                } else {
-                  db.close();
-
-                   reject(new Error("User already exists."));
-                }
+                });
               });
             });
           });
@@ -596,7 +592,6 @@ const UsersSchema = new GraphQLSchema({
 // Joi Validation Schemas
 const movieSchema = Joi.object().keys({
     title: Joi.string().required(),
-    slug: Joi.string().required(),
     year: Joi.string().required(),
     format: Joi.string().required(),
     tmdb_id: Joi.string().required(),
@@ -607,8 +602,7 @@ const movieSchema = Joi.object().keys({
 const moviesSchema = Joi.array().items(movieSchema);
 
 const formatSchema = Joi.object().keys({
-    title: Joi.string().required(),
-    slug: Joi.string().required()
+    title: Joi.string().required()
 });
 
 const passwordRegex = new RegExp("^(((?=.*[a-z])(?=.*[A-Z]))|((?=.*[a-z])(?=.*[0-9]))|((?=.*[A-Z])(?=.*[0-9])))(?=.{8,})");
@@ -906,7 +900,6 @@ server.route({
         mutation MovieMutation {
           addMovie(movie: {
             title: "${movie.title}"
-            slug: "${movie.slug}"
             year: "${movie.year}"
             format: "${movie.format}"
             tmdb_id: "${movie.tmdb_id}"
@@ -990,7 +983,6 @@ server.route({
         mutation MovieMutation {
           updateMovie(_id: "${movieId}", movie: {
             title: "${movie.title}"
-            slug: "${movie.slug}"
             year: "${movie.year}"
             format: "${movie.format}"
             tmdb_id: "${movie.tmdb_id}"
@@ -1089,7 +1081,6 @@ server.route({
         mutation FormatsMutation {
           addFormat(format: {
             title: "${format.title}"
-            slug: "${format.slug}"
           }) {
             _id
             title
@@ -1158,7 +1149,6 @@ server.route({
         mutation FormatsMutation {
           updateFormat(_id: "${formatId}", format: {
             title: "${format.title}"
-            slug: "${format.slug}"
           }) {
             _id
           }

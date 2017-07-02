@@ -117,7 +117,6 @@ Authentication is required for all Modification (Create, Update, Delete) tasks
 ```json
 {
   "title": "Batman Begins",
-  "slug": "batman-begins",
   "year": "2005",
   "format": "Bluray",
   "upc": "1337009",
@@ -156,7 +155,6 @@ Authentication is required for all Modification (Create, Update, Delete) tasks
 ```json
 {
   "title": "Batman Begins",
-  "slug": "batman-begins",
   "year": "2005",
   "format": "Bluray",
   "upc": "1337009",
@@ -247,8 +245,7 @@ Authentication is required for all Modification (Create, Update, Delete) tasks
 ### Request payload
 ```json
 {
-  "title": "Bluray",
-  "slug": "bluray"
+  "title": "Bluray"
 }
 ```
 ### Response
@@ -276,8 +273,7 @@ Authentication is required for all Modification (Create, Update, Delete) tasks
 ### Request payload
 ```json
 {
-  "title": "Bluray",
-  "slug": "bluray"
+  "title": "Bluray"
 }
 ```
 ### Response
