@@ -22,28 +22,14 @@ docker run -d -p "3000:3000" --name moviecollectionapi moviecollectionapi
     "data": {
         "movies": [
             {
-                "DVD_Title": "Doctor Strange",
-                "Studio": "Marvel",
-                "Released": "2016",
-                "Status": "Released",
-                "Sound": "Atmos",
-                "Year": "2016",
-                "Genre": "Science Fiction",
-                "UPC": "1337007",
-                "ID": "1",
-                "_id": "5952dd2f7a9c930011afdf58"
-            },
-            {
-                "DVD_Title": "Star Wars Rogue One",
-                "Studio": "Lucus Arts",
-                "Released": "2016",
-                "Status": "Released",
-                "Sound": "Atmos",
-                "Year": "2016",
-                "Genre": "Science Fiction",
-                "UPC": "1337006",
-                "ID": "2",
-                "_id": "5952dd2f7a9c930011afdf59"
+                "_id": "59586ecb1d814b0016ce423b",
+                "title": "Batman Begins",
+                "slug": "batman-begins",
+                "year": "2005",
+                "format": "Bluray",
+                "tmdb_id": "123",
+                "tmdb_image_url": "http://someurl",
+                "upc": "1337009"
             }
         ]
     }
@@ -53,7 +39,7 @@ docker run -d -p "3000:3000" --name moviecollectionapi moviecollectionapi
 ## Example Movies List response with GraphQL query
 ### Path
 ```
-  /movies?query={movies{DVD_Title UPC _id}}
+  /movies?query={movies{title upc _id}}
 ```
 ### Response
 ```
@@ -61,14 +47,9 @@ docker run -d -p "3000:3000" --name moviecollectionapi moviecollectionapi
     "data": {
         "movies": [
             {
-                "DVD_Title": "Doctor Strange",
-                "UPC": "1337007",
-                "_id": "5952dd2f7a9c930011afdf58"
-            },
-            {
-                "DVD_Title": "Star Wars Rogue One",
-                "UPC": "1337006",
-                "_id": "5952dd2f7a9c930011afdf59"
+                "_id": "59586ecb1d814b0016ce423b",
+                "title": "Batman Begins",
+                "upc": "1337009"
             }
         ]
     }
@@ -169,8 +150,11 @@ or has at least one uppercase and one numeric character
 ### Response
 ```json
 {
-    "n": 1,
-    "ok": 1
+    "data": {
+        "deleteUser": {
+            "_id": "5952e72aa5a69f0011be8f66"
+        }
+    }
 }
 ```
 
@@ -186,37 +170,31 @@ or has at least one uppercase and one numeric character
 ### Request payload
 ```json
 {
-  "movies": [
-    {
-      "DVD_Title": "Batman6",
-      "Studio": "DC",
-      "Released": "2005",
-      "Status": "Released",
-      "Sound": "Atmos",
-      "Year": "2005",
-      "Genre": "Science Fiction",
-      "UPC": "1337009",
-      "ID": "2"
-    }
-  ]
+  "title": "Batman Begins",
+  "slug": "batman-begins",
+  "year": "2005",
+  "format": "Bluray",
+  "upc": "1337009",
+  "tmdb_id": "123",
+  "tmdb_image_url": "http://someurl"
 }
 ```
 ### Response
 ```json
-[
-    {
-        "DVD_Title": "Batman6",
-        "Studio": "DC",
-        "Released": "2005",
-        "Status": "Released",
-        "Sound": "Atmos",
-        "Year": "2005",
-        "Genre": "Science Fiction",
-        "UPC": "1337009",
-        "ID": "2",
-        "_id": "5952f8f3a8c87e00117f972f"
+{
+    "data": {
+        "addMovie": {
+            "_id": "59586ecb1d814b0016ce423b",
+            "title": "Batman Begins",
+            "slug": "batman-begins",
+            "year": "2005",
+            "format": "Bluray",
+            "tmdb_id": "123",
+            "tmdb_image_url": "http://someurl",
+            "upc": "1337009"
+        }
     }
-]
+}
 ```
 
 ## Example Movie by ID
@@ -228,20 +206,16 @@ or has at least one uppercase and one numeric character
 ```json
 {
     "data": {
-        "movies": [
-            {
-                "DVD_Title": "Batman Begins",
-                "Studio": "DC",
-                "Released": "2005",
-                "Status": "Released",
-                "Sound": "Atmos",
-                "Year": "2005",
-                "Genre": "Science Fiction",
-                "UPC": "1337009",
-                "ID": "2",
-                "_id": "5952f8f3a8c87e00117f972f"
-            }
-        ]
+        "movie": {
+            "_id": "59586ecb1d814b0016ce423b",
+            "title": "Batman Begins",
+            "slug": "batman-begins",
+            "year": "2005",
+            "format": "Bluray",
+            "tmdb_id": "123",
+            "tmdb_image_url": "http://www.movies.com/",
+            "upc": "1337009"
+        }
     }
 }
 ```
@@ -258,23 +232,23 @@ or has at least one uppercase and one numeric character
 ### Request payload
 ```json
 {
-  "DVD_Title": "Batman Begins",
-  "Studio": "DC",
-  "Released": "2005",
-  "Status": "Released",
-  "Sound": "Atmos",
-  "Year": "2005",
-  "Genre": "Science Fiction",
-  "UPC": "1337009",
-  "ID": "2"
+  "title": "Batman Begins",
+  "slug": "batman-begins",
+  "year": "2005",
+  "format": "Bluray",
+  "upc": "1337009",
+  "tmdb_id": "123",
+  "tmdb_image_url": "http://www.movies.com/"
 }
 ```
 ### Response
 ```json
 {
-    "n": 1,
-    "nModified": 1,
-    "ok": 1
+    "data": {
+        "updateMovie": {
+            "_id": "59586ecb1d814b0016ce423b"
+        }
+    }
 }
 ```
 
@@ -290,7 +264,20 @@ or has at least one uppercase and one numeric character
 ### Response
 ```json
 {
-    "n": 1,
-    "ok": 1
+    "data": {
+        "deleteMovie": {
+            "_id": "5952e72aa5a69f0011be8f66"
+        }
+    }
 }
 ```
+
+### Example GET Formats
+
+### Example POST Format
+
+### Example GET Format by ID
+
+### Example PUT Format by ID
+
+### Example DELETE Format by ID
