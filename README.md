@@ -410,5 +410,5 @@ or has at least one uppercase and one numeric character
 ## Testing & Linting
 
 
-* Unit Testing uses [Lab](https://github.com/hapijs/lab) by [Hapi](hapijs.com)
+* Unit Testing uses [Lab](https://github.com/hapijs/lab) by [Hapi](http://hapijs.com)
 * Linting uses [ESLint](http://eslint.org/) built in support from [Lab](https://github.com/hapijs/lab)
