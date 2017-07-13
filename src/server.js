@@ -1,594 +1,735 @@
-"use strict";
+'use strict';
 
-const Hapi = require("hapi");
-const Joi = require("joi");
-const passSheriff = require("password-sheriff");
+const Hapi = require('hapi');
+const Joi = require('joi');
+const PasswordSheriff = require('password-sheriff');
 Joi.objectId = require('joi-objectid')(Joi);
 const server = new Hapi.Server();
-const JWT = require("jsonwebtoken");
-const HapiAuthJWT = require("hapi-auth-jwt2");
-const bcrypt = require("bcryptjs");
-const slugify = require("slugify");
+const JWT = require('jsonwebtoken');
+const HapiAuthJWT = require('hapi-auth-jwt2');
+const Bcrypt = require('Bcryptjs');
+const Slugify = require('Slugify');
 
-const {MongoClient, ObjectId} = require("mongodb");
-const mongoHost = process.env.mongo_host || "db";
-const mongoPort = process.env.mongo_port || "27017";
-const mongoCollection = process.env.mongo_collection || "moviecollection";
+const { MongoClient, ObjectId } = require('mongodb');
+const mongoHost = process.env.mongo_host || 'db';
+const mongoPort = process.env.mongo_port || '27017';
+const mongoCollection = process.env.mongo_collection || 'moviecollection';
 const mongoDbUrl = `mongodb://${mongoHost}:${mongoPort}/${mongoCollection}`;
 const createFirstUser = process.env.create_user || false;
 
 const {
-  graphql,
-  GraphQLSchema,
-  GraphQLObjectType,
-  GraphQLInputObjectType,
-  GraphQLID,
-  GraphQLString,
-  GraphQLList,
-  GraphQLNonNull
-} = require("graphql");
+    graphql,
+    GraphQLSchema,
+    GraphQLObjectType,
+    GraphQLInputObjectType,
+    GraphQLString,
+    GraphQLList,
+    GraphQLNonNull
+} = require('graphql');
 
 const Movie = new GraphQLObjectType({
-  name: "Movie",
-  fields: {
-    _id: {
-      type: GraphQLString
-    },
-    title: {
-      type: GraphQLString
-    },
-    slug: {
-      type: GraphQLString
-    },
-    year: {
-      type: GraphQLString
-    },
-    format: {
-      type: GraphQLString
-    },
-    tmdb_id: {
-      type: GraphQLString
-    },
-    tmdb_image_url: {
-      type: GraphQLString
-    },
-    upc: {
-      type: GraphQLString
+    name: 'Movie',
+    fields: {
+        _id: {
+            type: GraphQLString
+        },
+        title: {
+            type: GraphQLString
+        },
+        slug: {
+            type: GraphQLString
+        },
+        year: {
+            type: GraphQLString
+        },
+        format: {
+            type: GraphQLString
+        },
+        tmdb_id: {
+            type: GraphQLString
+        },
+        tmdb_image_url: {
+            type: GraphQLString
+        },
+        upc: {
+            type: GraphQLString
+        }
     }
-  }
 });
 
 const MovieInputType = new GraphQLInputObjectType({
-  name: 'MovieInput',
-  fields: () => ({
-    title: {
-      type: new GraphQLNonNull(GraphQLString)
-    },
-    year: {
-      type: new GraphQLNonNull(GraphQLString)
-    },
-    format: {
-      type: new GraphQLNonNull(GraphQLString)
-    },
-    tmdb_id: {
-      type: new GraphQLNonNull(GraphQLString)
-    },
-    tmdb_image_url: {
-      type: new GraphQLNonNull(GraphQLString)
-    },
-    upc: {
-      type: new GraphQLNonNull(GraphQLString)
-    }
-  })
+    name: 'MovieInput',
+    fields: () => ({
+
+        title: {
+            type: new GraphQLNonNull(GraphQLString)
+        },
+        year: {
+            type: new GraphQLNonNull(GraphQLString)
+        },
+        format: {
+            type: new GraphQLNonNull(GraphQLString)
+        },
+        tmdb_id: {
+            type: new GraphQLNonNull(GraphQLString)
+        },
+        tmdb_image_url: {
+            type: new GraphQLNonNull(GraphQLString)
+        },
+        upc: {
+            type: new GraphQLNonNull(GraphQLString)
+        }
+    })
 });
 
 const MoviesSchema = new GraphQLSchema({
-  query: new GraphQLObjectType({
-    name: "MovieQuery",
-    fields: { // fields define the root of our query
-      movie: {
-        type: Movie,
-        args: { // arguments we accept from the query
-          _id: {
-            type: GraphQLString
-          }
-        },
-        resolve: (_, args) => {
+    query: new GraphQLObjectType({
+        name: 'MovieQuery',
+        fields: { // fields define the root of our query
+            movie: {
+                type: Movie,
+                args: { // arguments we accept from the query
+                    _id: {
+                        type: GraphQLString
+                    }
+                },
+                resolve: (_, args) => {
 
-          const foundMovie = new Promise((resolve, reject) => {
+                    const foundMovie = new Promise((resolve, reject) => {
 
-            return MongoClient.connect(mongoDbUrl, (err, db) => {
-              const collection = db.collection("movies");
+                        return MongoClient.connect(mongoDbUrl, (err, db) => {
 
-              return collection.findOne({
-                _id: ObjectId(args._id)
-              }, (err, movie) => {
-                db.close();
+                            if (!err) {
+                                const collection = db.collection('movies');
 
-                err ? reject(err) : resolve(movie);
-              });
-            });
-          });
+                                collection.findOne({
+                                    _id: ObjectId(args._id)
+                                }, (err, movie) => {
 
-          return foundMovie;
+                                    db.close();
+
+                                    err ? reject(err) : resolve(movie);
+                                });
+                            }
+                            else {
+                                reject(err);
+                            }
+
+                        });
+                    });
+
+                    return foundMovie;
+                }
+            },
+            movies: {
+                type: new GraphQLList(Movie),
+                resolve: (_, args) => {
+
+                    const foundMovies = new Promise((resolve, reject) => {
+
+                        return MongoClient.connect(mongoDbUrl, (err, db) => {
+
+                            if (!err) {
+                                const collection = db.collection('movies');
+
+                                collection.find({}).toArray((err, movies) => {
+
+                                    db.close();
+
+                                    err ? reject(err) : resolve(movies);
+                                });
+                            }
+                            else {
+                                reject(err);
+                            }
+                        });
+                    });
+
+                    return foundMovies;
+                }
+            }
         }
-      },
-      movies: {
-        type: new GraphQLList(Movie),
-        resolve: (_, args) => {
-          const foundMovies = new Promise((resolve, reject) => {
+    }),
+    mutation: new GraphQLObjectType({
+        name: 'MovieMutation',
+        description: 'Manage the movie collection',
+        fields: () => ({
+            addMovie: {
+                type: Movie,
+                description: 'Add a movie to the collection.',
+                args: {
+                    movie: {
+                        type: MovieInputType
+                    }
+                },
+                resolve: (value, { movie }) => {
 
-            return MongoClient.connect(mongoDbUrl, (err, db) => {
-              const collection = db.collection("movies");
+                    const createdMovie = new Promise((resolve, reject) => {
 
-              return collection.find({}).toArray((err, movies) => {
-                db.close();
+                        movie.slug = Slugify(`${movie.year} ${movie.title}`).toLowerCase();
 
-                err ? reject(err) : resolve(movies);
-              });
-            });
-          });
+                        return MongoClient.connect(mongoDbUrl, (err, db) => {
 
-          return foundMovies;
-        }
-      }
-    }
-  }),
-  mutation: new GraphQLObjectType({
-    name: 'MovieMutation',
-    description: 'Manage the movie collection',
-    fields: () => ({
-      addMovie: {
-        type: Movie,
-        description: 'Add a movie to the collection.',
-        args: {
-          movie: {
-            type: MovieInputType
-          }
-        },
-        resolve: (value, { movie }) => {
-          const createdMovie = new Promise((resolve, reject) => {
-            movie.slug = slugify(`${movie.year} ${movie.title}`).toLowerCase();
+                            if (!err) {
+                                const collection = db.collection('movies');
 
-            return MongoClient.connect(mongoDbUrl, (err, db) => {
-              const collection = db.collection("movies");
+                                collection.insertOne(movie, (err, result) => {
 
-              return collection.insertOne(movie, (err, result) => {
-                collection.createIndex( { "slug": 1 }, { unique: true } );
-                db.close();
+                                    collection.createIndex({ 'slug': 1 }, { unique: true });
 
-                err ? reject(err) : resolve(result.ops[0]);
-              });
-            });
-          });
+                                    db.close();
 
-          return createdMovie;
-        }
-      },
-      updateMovie: {
-        type: Movie,
-        description: 'Update a movie in the collection.',
-        args: {
-          _id: {
-            type: new GraphQLNonNull(GraphQLString)
-          },
-          movie: {
-            type: MovieInputType
-          }
-        },
-        resolve: (value, { _id, movie }) => {
-          const updatedMovie = new Promise((resolve, reject) => {
-            movie.slug = slugify(`${movie.year} ${movie.title}`).toLowerCase();
+                                    err ? reject(err) : resolve(result.ops[0]);
+                                });
+                            }
+                            else {
+                                reject(err);
+                            }
+                        });
+                    });
 
-            return MongoClient.connect(mongoDbUrl, (err, db) => {
-              const collection = db.collection("movies");
+                    return createdMovie;
+                }
+            },
+            updateMovie: {
+                type: Movie,
+                description: 'Update a movie in the collection.',
+                args: {
+                    _id: {
+                        type: new GraphQLNonNull(GraphQLString)
+                    },
+                    movie: {
+                        type: MovieInputType
+                    }
+                },
+                resolve: (value, { _id, movie }) => {
 
-              return collection.updateOne({
-                _id: ObjectId(_id)
-              }, {
-                $set: movie
-              }, (err, result) => {
-                db.close();
+                    const updatedMovie = new Promise((resolve, reject) => {
 
-                err ? reject(err) : resolve(result.modifiedCount === 1 ? { "_id": _id } : {});
-              });
-            });
-          });
+                        movie.slug = Slugify(`${movie.year} ${movie.title}`).toLowerCase();
 
-          return updatedMovie;
-        }
-      },
-      deleteMovie: {
-        type: Movie,
-        description: 'Delete a movie with _id from the collection.',
-        args: {
-          _id: {
-            type: new GraphQLNonNull(GraphQLString)
-          }
-        },
-        resolve: (value, { _id }) => {
+                        return MongoClient.connect(mongoDbUrl, (err, db) => {
 
-          const deletedMovie = new Promise((resolve, reject) => {
+                            if (!err) {
+                                const collection = db.collection('movies');
 
-            return MongoClient.connect(mongoDbUrl, (err, db) => {
-              const collection = db.collection("movies");
+                                collection.updateOne({
+                                    _id: ObjectId(_id)
+                                }, {
+                                    $set: movie
+                                }, (err, result) => {
 
-              return collection.deleteOne({
-                _id: ObjectId(_id)
-              }, (err, result) => {
-                db.close();
+                                    db.close();
 
-                err ? reject(err) : resolve(result.deletedCount === 1 ? { "_id": _id } : {});
-              });
-            });
-          });
+                                    err ? reject(err) : resolve(result.modifiedCount === 1 ? { _id } : {});
+                                });
+                            }
+                            else {
+                                reject(err);
+                            }
+                        });
+                    });
 
-          return deletedMovie;
-        }
-      }
+                    return updatedMovie;
+                }
+            },
+            deleteMovie: {
+                type: Movie,
+                description: 'Delete a movie with _id from the collection.',
+                args: {
+                    _id: {
+                        type: new GraphQLNonNull(GraphQLString)
+                    }
+                },
+                resolve: (value, { _id }) => {
+
+                    const deletedMovie = new Promise((resolve, reject) => {
+
+                        return MongoClient.connect(mongoDbUrl, (err, db) => {
+
+                            if (!err) {
+                                const collection = db.collection('movies');
+
+                                collection.deleteOne({
+                                    _id: ObjectId(_id)
+                                }, (err, result) => {
+
+                                    db.close();
+
+                                    err ? reject(err) : resolve(result.deletedCount === 1 ? { _id } : {});
+                                });
+                            }
+                            else {
+                                reject(err);
+                            }
+                        });
+                    });
+
+                    return deletedMovie;
+                }
+            }
+        })
     })
-  }),
 });
 
 const Format = new GraphQLObjectType({
-  name: "MovieFormat",
-  fields: {
-    _id: {
-      type: GraphQLString
-    },
-    title: {
-      type: GraphQLString
-    },
-    slug: {
-      type: GraphQLString
+    name: 'MovieFormat',
+    fields: {
+        _id: {
+            type: GraphQLString
+        },
+        title: {
+            type: GraphQLString
+        },
+        slug: {
+            type: GraphQLString
+        }
     }
-  }
 });
 
 const FormatInputType = new GraphQLInputObjectType({
-  name: 'FormatInput',
-  fields: () => ({
-    title: {
-      type: new GraphQLNonNull(GraphQLString)
-    }
-  })
+    name: 'FormatInput',
+    fields: () => ({
+
+        title: {
+            type: new GraphQLNonNull(GraphQLString)
+        }
+    })
 });
 
 const FormatsSchema = new GraphQLSchema({
-  query: new GraphQLObjectType({
-    name: "FormatQuery",
-    fields: { // fields define the root of our query
-      format: {
-        type: Format,
-        args: { // arguments we accept from the query
-          _id: {
-            type: GraphQLString
-          }
-        },
-        resolve: (_, args) => {
+    query: new GraphQLObjectType({
+        name: 'FormatQuery',
+        fields: { // fields define the root of our query
+            format: {
+                type: Format,
+                args: { // arguments we accept from the query
+                    _id: {
+                        type: GraphQLString
+                    }
+                },
+                resolve: (_, args) => {
 
-          const foundFormat = new Promise((resolve, reject) => {
+                    const foundFormat = new Promise((resolve, reject) => {
 
-            return MongoClient.connect(mongoDbUrl, (err, db) => {
-              const collection = db.collection("formats");
 
-              return collection.findOne({
-                _id: ObjectId(args._id)
-              }, (err, format) => {
-                db.close();
+                        return MongoClient.connect(mongoDbUrl, (err, db) => {
 
-                err ? reject(err) : resolve(format);
-              });
-            });
-          });
+                            if (!err) {
+                                const collection = db.collection('formats');
 
-          return foundFormat;
+                                collection.findOne({
+                                    _id: ObjectId(args._id)
+                                }, (err, format) => {
+
+                                    db.close();
+
+                                    err ? reject(err) : resolve(format);
+                                });
+                            }
+                            else {
+                                reject(err);
+                            }
+                        });
+                    });
+
+                    return foundFormat;
+                }
+            },
+            formats: {
+                type: new GraphQLList(Format),
+                resolve: (_, args) => {
+
+                    const foundFormats = new Promise((resolve, reject) => {
+
+                        return MongoClient.connect(mongoDbUrl, (err, db) => {
+
+                            if (!err) {
+                                const collection = db.collection('formats');
+
+                                collection.find({}).toArray((err, formats) => {
+
+                                    db.close();
+
+                                    err ? reject(err) : resolve(formats);
+                                });
+                            }
+                            else {
+                                reject(err);
+                            }
+                        });
+                    });
+
+                    return foundFormats;
+                }
+            }
         }
-      },
-      formats: {
-        type: new GraphQLList(Format),
-        resolve: (_, args) => {
-          const foundFormats = new Promise((resolve, reject) => {
+    }),
+    mutation: new GraphQLObjectType({
+        name: 'FormatsMutation',
+        description: 'Manage the movie formats of the collection',
+        fields: () => ({
+            addFormat: {
+                type: Format,
+                description: 'Add a movie format to the collection.',
+                args: {
+                    format: {
+                        type: FormatInputType
+                    }
+                },
+                resolve: (value, { format }) => {
 
-            return MongoClient.connect(mongoDbUrl, (err, db) => {
-              const collection = db.collection("formats");
+                    const createdFormat = new Promise((resolve, reject) => {
 
-              return collection.find({}).toArray((err, formats) => {
-                db.close();
+                        format.slug = Slugify(format.title).toLowerCase();
 
-                err ? reject(err) : resolve(formats);
-              });
-            });
-          });
+                        return MongoClient.connect(mongoDbUrl, (err, db) => {
 
-          return foundFormats;
-        }
-      }
-    }
-  }),
-  mutation: new GraphQLObjectType({
-    name: 'FormatsMutation',
-    description: 'Manage the movie formats of the collection',
-    fields: () => ({
-      addFormat: {
-        type: Format,
-        description: 'Add a movie format to the collection.',
-        args: {
-          format: {
-            type: FormatInputType
-          }
-        },
-        resolve: (value, { format }) => {
-          const createdFormat = new Promise((resolve, reject) => {
-            format.slug = slugify(format.title).toLowerCase();
+                            if (!err) {
+                                const collection = db.collection('formats');
 
-            return MongoClient.connect(mongoDbUrl, (err, db) => {
-              const collection = db.collection("formats");
+                                collection.insertOne(format, (err, result) => {
 
-              return collection.insertOne(format, (err, result) => {
-                collection.createIndex( { "slug": 1 }, { unique: true } );
-                db.close();
+                                    collection.createIndex({ 'slug': 1 }, { unique: true });
+                                    db.close();
 
-                err ? reject(err) : resolve(result.ops[0]);
-              });
-            });
-          });
+                                    err ? reject(err) : resolve(result.ops[0]);
+                                });
+                            }
+                            else {
+                                reject(err);
+                            }
+                        });
+                    });
 
-          return createdFormat;
-        }
-      },
-      updateFormat: {
-        type: Format,
-        description: 'Update a movie format in the collection.',
-        args: {
-          _id: {
-            type: new GraphQLNonNull(GraphQLString)
-          },
-          format: {
-            type: FormatInputType
-          }
-        },
-        resolve: (value, { _id, format }) => {
-          const updatedFormat = new Promise((resolve, reject) => {
-            format.slug = slugify(format.title).toLowerCase();
+                    return createdFormat;
+                }
+            },
+            updateFormat: {
+                type: Format,
+                description: 'Update a movie format in the collection.',
+                args: {
+                    _id: {
+                        type: new GraphQLNonNull(GraphQLString)
+                    },
+                    format: {
+                        type: FormatInputType
+                    }
+                },
+                resolve: (value, { _id, format }) => {
 
-            return MongoClient.connect(mongoDbUrl, (err, db) => {
-              const collection = db.collection("formats");
+                    const updatedFormat = new Promise((resolve, reject) => {
 
-              return collection.updateOne({
-                _id: ObjectId(_id)
-              }, {
-                $set: format
-              }, (err, result) => {
-                db.close();
+                        format.slug = Slugify(format.title).toLowerCase();
 
-                err ? reject(err) : resolve(result.modifiedCount === 1 ? { "_id": _id } : {});
-              });
-            });
-          });
+                        return MongoClient.connect(mongoDbUrl, (err, db) => {
 
-          return updatedFormat;
-        }
-      },
-      deleteFormat: {
-        type: Format,
-        description: 'Delete a movie format with _id from the collection.',
-        args: {
-          _id: {
-            type: new GraphQLNonNull(GraphQLString)
-          }
-        },
-        resolve: (value, { _id }) => {
+                            if (!err) {
+                                const collection = db.collection('formats');
 
-          const deletedFormat = new Promise((resolve, reject) => {
+                                collection.updateOne({
+                                    _id: ObjectId(_id)
+                                }, {
+                                    $set: format
+                                }, (err, result) => {
 
-            return MongoClient.connect(mongoDbUrl, (err, db) => {
-              const collection = db.collection("formats");
+                                    db.close();
 
-              return collection.deleteOne({
-                _id: ObjectId(_id)
-              }, (err, result) => {
-                db.close();
+                                    err ? reject(err) : resolve(result.modifiedCount === 1 ? { _id } : {});
+                                });
+                            }
+                            else {
+                                reject(err);
+                            }
+                        });
+                    });
 
-                err ? reject(err) : resolve(result.deletedCount === 1 ? { "_id": _id } : {});
-              });
-            });
-          });
+                    return updatedFormat;
+                }
+            },
+            deleteFormat: {
+                type: Format,
+                description: 'Delete a movie format with _id from the collection.',
+                args: {
+                    _id: {
+                        type: new GraphQLNonNull(GraphQLString)
+                    }
+                },
+                resolve: (value, { _id }) => {
 
-          return deletedFormat;
-        }
-      }
+                    const deletedFormat = new Promise((resolve, reject) => {
+
+                        return MongoClient.connect(mongoDbUrl, (err, db) => {
+
+                            if (!err) {
+                                const collection = db.collection('formats');
+
+                                collection.deleteOne({
+                                    _id: ObjectId(_id)
+                                }, (err, result) => {
+
+                                    db.close();
+
+                                    err ? reject(err) : resolve(result.deletedCount === 1 ? { _id } : {});
+                                });
+                            }
+                            else {
+                                reject(err);
+                            }
+                        });
+                    });
+
+                    return deletedFormat;
+                }
+            }
+        })
     })
-  }),
 });
 
 const User = new GraphQLObjectType({
-  name: "User",
-  fields: {
-    email: {
-      type: GraphQLString
-    },
-    _id: {
-      type: GraphQLString
+    name: 'User',
+    fields: {
+        email: {
+            type: GraphQLString
+        },
+        _id: {
+            type: GraphQLString
+        }
     }
-  }
 });
 
 const UserInputType = new GraphQLInputObjectType({
-  name: 'UserInput',
-  fields: () => ({
-    email: {
-      type: new GraphQLNonNull(GraphQLString)
-    },
-    password: {
-      type: new GraphQLNonNull(GraphQLString)
-    },
-  })
+    name: 'UserInput',
+    fields: () => ({
+
+        email: {
+            type: new GraphQLNonNull(GraphQLString)
+        },
+        password: {
+            type: new GraphQLNonNull(GraphQLString)
+        }
+    })
 });
 
 const UsersSchema = new GraphQLSchema({
-  query: new GraphQLObjectType({
-    name: "UserQuery",
-    fields: { // fields define the root of our query
-      user: {
-        type: User,
-        args: { // arguments we accept from the query
-          _id: {
-            type: GraphQLString
-          }
-        },
-        resolve: (_, args) => {
-
-          const foundUser = new Promise((resolve, reject) => {
-
-              return MongoClient.connect(mongoDbUrl, (err, db) => {
-                const collection = db.collection("users");
-
-                return collection.findOne({
-                  _id: ObjectId(args._id)
-                }, {
-                  "password": false
-                }, (err, user) => {
-                  db.close();
-
-                  err ? reject(err) : resolve(user);
-                });
-              });
-          });
-
-          return foundUser;
-        }
-      },
-      users: {
-        type: new GraphQLList(User),
-        resolve: (_, args) => {
-
-          const foundUsers = new Promise((resolve, reject) => {
-
-              return MongoClient.connect(mongoDbUrl, (err, db) => {
-                const collection = db.collection("users");
-
-                return collection.find({}, {
-                  "password": false
-                }).toArray((err, users) => {
-                  db.close();
-
-                  err ? reject(err) : resolve(users);
-                });
-              });
-          });
-
-          return foundUsers;
-        }
-      }
-    }
-  }),
-  mutation: new GraphQLObjectType({
-    name: 'UserMutation',
-    description: 'Manage the users that manage the collection',
-    fields: () => ({
-      addUser: {
-        type: User,
-        description: 'Add a user.',
-        args: {
-          user: {
-            type: UserInputType
-          }
-        },
-        resolve: (value, { user }) => {
-          const createdUser = new Promise((resolve, reject) => {
-
-            return MongoClient.connect(mongoDbUrl, (err, db) => {
-              const collection = db.collection("users");
-
-              return bcrypt.genSalt(10, function(err, salt) {
-
-                return bcrypt.hash(user.password, salt, function(err, hash) {
-                  user.password = hash;
-
-                  return collection.insertOne(user, (err, result) => {
-                    collection.createIndex( { "email": 1 }, { unique: true } );
-                    db.close();
-
-                    if (!err) {
-                      delete result.ops[0].password;
-                      resolve(result.ops[0]);
-                    } else {
-                      reject(err);
+    query: new GraphQLObjectType({
+        name: 'UserQuery',
+        fields: { // fields define the root of our query
+            user: {
+                type: User,
+                args: { // arguments we accept from the query
+                    _id: {
+                        type: GraphQLString
                     }
-                  });
-                });
-              });
-            });
-          });
+                },
+                resolve: (_, args) => {
 
-          return createdUser;
+                    const foundUser = new Promise((resolve, reject) => {
+
+                        return MongoClient.connect(mongoDbUrl, (err, db) => {
+
+                            if (!err) {
+                                const collection = db.collection('users');
+
+                                collection.findOne({
+                                    _id: ObjectId(args._id)
+                                }, {
+                                    'password': false
+                                }, (err, user) => {
+
+                                    db.close();
+
+                                    err ? reject(err) : resolve(user);
+                                });
+                            }
+                            else {
+                                reject(err);
+                            }
+                        });
+                    });
+
+                    return foundUser;
+                }
+            },
+            users: {
+                type: new GraphQLList(User),
+                resolve: (_, args) => {
+
+                    const foundUsers = new Promise((resolve, reject) => {
+
+                        return MongoClient.connect(mongoDbUrl, (err, db) => {
+
+                            if (!err) {
+                                const collection = db.collection('users');
+
+                                collection.find({}, {
+                                    'password': false
+                                }).toArray((err, users) => {
+
+                                    db.close();
+
+                                    err ? reject(err) : resolve(users);
+                                });
+                            }
+                            else {
+                                reject(err);
+                            }
+                        });
+                    });
+
+                    return foundUsers;
+                }
+            }
         }
-      },
-      updateUser: {
-        type: User,
-        description: 'Update a user.',
-        args: {
-          _id: {
-            type: new GraphQLNonNull(GraphQLString)
-          },
-          user: {
-            type: UserInputType
-          }
-        },
-        resolve: (value, { _id, user }) => {
-          const updatedUser = new Promise((resolve, reject) => {
-            const salt = bcrypt.genSaltSync(10);
-            user.password = bcrypt.hashSync(user.password, salt);
+    }),
+    mutation: new GraphQLObjectType({
+        name: 'UserMutation',
+        description: 'Manage the users that manage the collection',
+        fields: () => ({
+            addUser: {
+                type: User,
+                description: 'Add a user.',
+                args: {
+                    user: {
+                        type: UserInputType
+                    }
+                },
+                resolve: (value, { user }) => {
 
-            return MongoClient.connect(mongoDbUrl, (err, db) => {
-              const collection = db.collection("users");
+                    const createdUser = new Promise((resolve, reject) => {
 
-              return collection.updateOne({
-                _id: ObjectId(_id)
-              }, {
-                $set: user
-              }, (err, result) => {
-                db.close();
+                        return MongoClient.connect(mongoDbUrl, (err, db) => {
 
-                err ? reject(err) : resolve(result.modifiedCount === 1 ? { "_id": _id } : {});
-              });
-            });
-          });
+                            if (!err) {
+                                const collection = db.collection('users');
 
-          return updatedUser;
-        }
-      },
-      deleteUser: {
-        type: Movie,
-        description: 'Delete a user.',
-        args: {
-          _id: {
-            type: new GraphQLNonNull(GraphQLString)
-          }
-        },
-        resolve: (value, { _id }) => {
+                                Bcrypt.genSalt(10, (err, salt) => {
 
-          const deletedUser = new Promise((resolve, reject) => {
+                                    if (!err) {
+                                        Bcrypt.hash(user.password, salt, (err, hash) => {
 
-              return MongoClient.connect(mongoDbUrl, (err, db) => {
-                const collection = db.collection("users");
+                                            if (!err) {
+                                                user.password = hash;
 
-                return collection.deleteOne({
-                  _id: ObjectId(_id)
-                }, (err, result) => {
-                  db.close();
+                                                collection.insertOne(user, (err, result) => {
 
-                  err ? reject(err) : resolve(result.deletedCount === 1 ? { "_id": _id } : {});
-                });
-              });
-          });
+                                                    if (!err) {
+                                                        collection.createIndex({ 'email': 1 }, { unique: true });
+                                                        db.close();
 
-          return deletedUser;
-        }
-      }
+                                                        if (!err) {
+                                                            delete result.ops[0].password;
+                                                            resolve(result.ops[0]);
+                                                        }
+                                                        else {
+                                                            reject(err);
+                                                        }
+
+                                                    }
+                                                    else {
+                                                        reject(err);
+                                                    }
+                                                });
+                                            }
+                                            else {
+                                                reject(err);
+                                            }
+                                        });
+                                    }
+                                    else {
+                                        reject(err);
+                                    }
+                                });
+                            }
+                            else {
+                                reject(err);
+                            }
+                        });
+                    });
+
+                    return createdUser;
+                }
+            },
+            updateUser: {
+                type: User,
+                description: 'Update a user.',
+                args: {
+                    _id: {
+                        type: new GraphQLNonNull(GraphQLString)
+                    },
+                    user: {
+                        type: UserInputType
+                    }
+                },
+                resolve: (value, { _id, user }) => {
+
+                    const updatedUser = new Promise((resolve, reject) => {
+
+                        const salt = Bcrypt.genSaltSync(10);
+                        user.password = Bcrypt.hashSync(user.password, salt);
+
+                        return MongoClient.connect(mongoDbUrl, (err, db) => {
+
+                            if (!err) {
+                                const collection = db.collection('users');
+
+                                collection.updateOne({
+                                    _id: ObjectId(_id)
+                                }, {
+                                    $set: user
+                                }, (err, result) => {
+
+                                    db.close();
+
+                                    err ? reject(err) : resolve(result.modifiedCount === 1 ? { _id } : {});
+                                });
+                            }
+                            else {
+                                reject(err);
+                            }
+                        });
+                    });
+
+                    return updatedUser;
+                }
+            },
+            deleteUser: {
+                type: Movie,
+                description: 'Delete a user.',
+                args: {
+                    _id: {
+                        type: new GraphQLNonNull(GraphQLString)
+                    }
+                },
+                resolve: (value, { _id }) => {
+
+                    const deletedUser = new Promise((resolve, reject) => {
+
+                        return MongoClient.connect(mongoDbUrl, (err, db) => {
+
+                            if (!err) {
+                                const collection = db.collection('users');
+
+                                collection.deleteOne({
+                                    _id: ObjectId(_id)
+                                }, (err, result) => {
+
+                                    db.close();
+
+                                    err ? reject(err) : resolve(result.deletedCount === 1 ? { _id } : {});
+                                });
+                            }
+                            else {
+                                reject(err);
+                            }
+                        });
+                    });
+
+                    return deletedUser;
+                }
+            }
+        })
     })
-  }),
 });
 
 // Joi Validation Schemas
@@ -601,15 +742,13 @@ const movieSchema = Joi.object().keys({
     upc: Joi.string().required()
 });
 
-const moviesSchema = Joi.array().items(movieSchema);
-
 const formatSchema = Joi.object().keys({
     title: Joi.string().required()
 });
 
 // Create a custom Joi password validation utlizing password-sheriff
-const joi = Joi.extend((joi) => ({
-    base: joi.string(),
+const joi = Joi.extend((originalJoi) => ({
+    base: originalJoi.string(),
     name: 'password',
     language: {
         minimum: 'needs to meet the minimum requirements'
@@ -618,649 +757,697 @@ const joi = Joi.extend((joi) => ({
         {
             name: 'minimum',
             validate(params, value, state, options) {
-              const charsets = passSheriff.charsets;
-              const joiPasswordPolicy = new passSheriff.PasswordPolicy({
-                length: {
-                  minLength: 8
-                },
-                containsAtLeast: {
-                  atLeast: 2,
-                  expressions: [ charsets.lowerCase, charsets.upperCase, charsets.numbers ]
+
+                const charsets = PasswordSheriff.charsets;
+                const joiPasswordPolicy = new PasswordSheriff.PasswordPolicy({
+                    length: {
+                        minLength: 8
+                    },
+                    containsAtLeast: {
+                        atLeast: 2,
+                        expressions: [charsets.lowerCase, charsets.upperCase, charsets.numbers]
+                    }
+                });
+
+                const passwordValidation = joiPasswordPolicy.check(value);
+
+                if (!passwordValidation) {
+                    // Generate an error, state and options need to be passed
+                    return this.createError('password.minimum', { v: value }, state, options);
                 }
-              });
 
-              const passwordValidation = joiPasswordPolicy.check(value);
-
-              if (!passwordValidation) {
-                  // Generate an error, state and options need to be passed
-                  return this.createError('password.minimum', { v: value }, state, options);
-              }
-
-              return value; // Everything is OK
+                return value; // Everything is OK
             }
         }
     ]
 }));
-const passwordErrorText = "Password doesn't meet minimum requirements";
+
 const userSchema = Joi.object().keys({
     email: Joi.string().email().required(),
     password: joi.password().minimum().required()
 });
 
 // JWT settings
-const secretKey = process.env.jwtkey || "everythingisawesome";
-const jwtAlgorithm = process.env.jwtalgo || "HS256";
-const jwtExpires = process.env.jwtexpires || "1h";
+const secretKey = process.env.jwtkey || 'everythingisawesome';
+const jwtAlgorithm = process.env.jwtalgo || 'HS256';
+const jwtExpires = process.env.jwtexpires || '1h';
 
 server.connection({
-  port: process.env.PORT || 8080
+    port: process.env.PORT || 8080
 });
 
 server.register(HapiAuthJWT, (err) => {
 
-  const validate = (decoded, request, callback) => {
-    console.log(decoded);
+    if (!err) {
+        const validate = (decoded, request, callback) => {
 
-    return MongoClient.connect(mongoDbUrl, (err, db) => {
-      const collection = db.collection("users");
+            console.log(decoded);
 
-      return collection.findOne({ "email": decoded.email }, (err, user) => {
-        db.close();
+            return MongoClient.connect(mongoDbUrl, (err, db) => {
 
-        if (user) {
-          return callback(null, true); // session is valid
-        } else {
-          return callback(null, false); // session expired
-        }
-      });
-    });
-  };
+                if (!err) {
+                    const collection = db.collection('users');
 
-  server.auth.strategy("jwt", "jwt", {
-    key: secretKey,
-    validateFunc: validate,
-    verifyOptions: {
-      algorithms: [ jwtAlgorithm ],
+                    collection.findOne({ 'email': decoded.email }, (err, user) => {
+
+                        db.close();
+
+                        if (!err) {
+                            if (user) {
+                                callback(null, true); // session is valid
+                            }
+                            else {
+                                callback(null, false); // session expired
+                            }
+                        }
+                        else {
+                            callback(null, false); // session expired
+                        }
+                    });
+                }
+                else {
+                    callback(null, false);
+                }
+            });
+        };
+
+        server.auth.strategy('jwt', 'jwt', {
+            key: secretKey,
+            validateFunc: validate,
+            verifyOptions: {
+                algorithms: [jwtAlgorithm]
+            }
+        });
+
+        server.auth.default('jwt');
     }
-  });
-
-  server.auth.default('jwt');
-
+    else {
+        throw err;
+    }
 });
 
 // Route to authenticate with the API
 server.route({
-  path: "/auth",
-  method: "POST",
-  config: {
-    auth: false,
-    handler: (request, reply) => {
+    path: '/auth',
+    method: 'POST',
+    config: {
+        auth: false,
+        handler: (request, reply) => {
 
-      const { email, password } = request.payload;
+            const { email, password } = request.payload;
 
-      return MongoClient.connect(mongoDbUrl, (err, db) => {
-        const collection = db.collection("users");
+            return MongoClient.connect(mongoDbUrl, (err, db) => {
 
-        return collection.findOne({ "email": email }, (err, user) => {
-          db.close();
+                if (!err) {
+                    const collection = db.collection('users');
 
-          if (user !== null && bcrypt.compareSync(password, user.password)) {
-            const token = JWT.sign({
-              email
-            }, secretKey, {
-              algorithm: jwtAlgorithm,
-              expiresIn: jwtExpires
+                    collection.findOne({ email }, (err, user) => {
+
+                        db.close();
+
+                        if (!err) {
+                            if (user !== null && Bcrypt.compareSync(password, user.password)) {
+                                const token = JWT.sign({
+                                    email
+                                }, secretKey, {
+                                    algorithm: jwtAlgorithm,
+                                    expiresIn: jwtExpires
+                                });
+
+                                reply({
+                                    token
+                                });
+                            }
+                            else {
+                                reply({
+                                    'statusCode': 401,
+                                    'error': 'Unauthorized',
+                                    'message': 'Incorrect email/password combination'
+                                }).code(401);
+                            }
+                        }
+                        else {
+                            reply().code(500);
+                        }
+                    });
+                }
+                else {
+                    reply().code(500);
+                }
             });
-
-            return reply({
-              token
-            });
-          } else {
-            return reply({
-                "statusCode": 401,
-                "error": "Unauthorized",
-                "message": "Incorrect email/password combination"
-            }).code(401);
-          }
-        });
-      });
-    },
-    validate: {
-      payload: userSchema
+        },
+        validate: {
+            payload: userSchema
+        }
     }
-  }
 });
 
 // Route to get all the users
 server.route({
-  method: "GET",
-  path:"/users",
-  config: {
-    handler: (request, reply) => {
+    method: 'GET',
+    path: '/users',
+    config: {
+        handler: (request, reply) => {
 
-      const defaultData = `
-        {
-          users {
-            _id
-            email
-          }
+            const defaultData = `
+                {
+                    users {
+                        _id
+                        email
+                    }
+                }
+            `;
+
+            const requestedData = (request.query.query) ? request.query.query : defaultData;
+
+            return graphql(UsersSchema, requestedData).then((response) => {
+
+                return reply(response);
+            });
         }
-      `;
-
-      const requestedData = (request.query.query) ? request.query.query : defaultData;
-
-      return graphql(UsersSchema, requestedData).then((response) => {
-
-        return reply(response);
-      });
     }
-  }
 });
 
 // Route to Get a User by ID
 server.route({
-  method: "GET",
-  path:"/users/{id}",
-  config:{
-    handler: (request, reply) => {
-      const userId = request.params.id;
+    method: 'GET',
+    path: '/users/{id}',
+    config: {
+        handler: (request, reply) => {
 
-      const defaultData = `
-        {
-          user(_id: "${userId}") {
-            _id
-            email
-          }
-        }
-      `;
+            const userId = request.params.id;
 
-      const requestedData = (request.query.query) ? request.query.query : defaultData;
+            const defaultData = `
+                {
+                    user(_id: "${userId}") {
+                        _id
+                        email
+                    }
+                }
+            `;
 
-      return graphql(UsersSchema, requestedData).then((response) => {
+            const requestedData = (request.query.query) ? request.query.query : defaultData;
 
-        return reply(response);
-      });
-    },
-    validate: {
-        params: {
-          id: Joi.objectId()
+            return graphql(UsersSchema, requestedData).then((response) => {
+
+                return reply(response);
+            });
+        },
+        validate: {
+            params: {
+                id: Joi.objectId()
+            }
         }
     }
-  }
 });
 
 // Route to Add users(s) to manage the collection
 server.route({
-  method: "POST",
-  path:"/users",
-  config:{
-    handler: (request, reply) => {
-      const user = request.payload;
+    method: 'POST',
+    path: '/users',
+    config: {
+        handler: (request, reply) => {
 
-      const defaultData = `
-        mutation UserMutation {
-          addUser(user: {
-            email: "${user.email}"
-            password: "${user.password}"
-          }) {
-            _id
-          }
+            const user = request.payload;
+
+            const defaultData = `
+                mutation UserMutation {
+                    addUser(user: {
+                        email: "${user.email}"
+                        password: "${user.password}"
+                    }) {
+                        _id
+                    }
+                }
+            `;
+
+            const requestedData = (request.query.query) ? request.query.query : defaultData;
+
+            return graphql(UsersSchema, requestedData).then((response) => {
+
+                return reply(response);
+            });
+        },
+        validate: {
+            payload: userSchema
         }
-      `;
-
-      const requestedData = (request.query.query) ? request.query.query : defaultData;
-
-      return graphql(UsersSchema, requestedData).then((response) => {
-
-        return reply(response);
-      });
-    },
-    validate: {
-      payload: userSchema
     }
-  }
 });
 
 // Route to Update a User
 server.route({
-  method: "PUT",
-  path:"/users/{id}",
-  config:{
-    handler: (request, reply) => {
-      const userId = request.params.id;
-      const user = request.payload;
-      const salt = bcrypt.genSaltSync(10);
-      user.password = bcrypt.hashSync(user.password, salt);
+    method: 'PUT',
+    path: '/users/{id}',
+    config: {
+        handler: (request, reply) => {
 
-      const defaultData = `
-        mutation UserMutation {
-          updateUser(_id: "${userId}", user: {
-            email: "${user.email}"
-            password: "${user.password}"
-          }) {
-            _id
-          }
+            const userId = request.params.id;
+            const user = request.payload;
+            const salt = Bcrypt.genSaltSync(10);
+            user.password = Bcrypt.hashSync(user.password, salt);
+
+            const defaultData = `
+                mutation UserMutation {
+                    updateUser(_id: "${userId}", user: {
+                        email: "${user.email}"
+                        password: "${user.password}"
+                    }) {
+                        _id
+                    }
+                }
+            `;
+
+            const requestedData = (request.query.query) ? request.query.query : defaultData;
+
+            return graphql(UsersSchema, requestedData).then((response) => {
+
+                return reply(response);
+            });
+        },
+        validate: {
+            params: {
+                id: Joi.objectId()
+            },
+            payload: userSchema
         }
-      `;
-
-      const requestedData = (request.query.query) ? request.query.query : defaultData;
-
-      return graphql(UsersSchema, requestedData).then((response) => {
-
-        return reply(response);
-      });
-    },
-    validate: {
-      params: {
-        id: Joi.objectId()
-      },
-      payload: userSchema
     }
-  }
 });
 
 // Route to Delete a User
 server.route({
-  method: "DELETE",
-  path:"/users/{id}",
-  config:{
-    handler: (request, reply) => {
-      const userId = request.params.id;
+    method: 'DELETE',
+    path: '/users/{id}',
+    config: {
+        handler: (request, reply) => {
 
-      const defaultData = `
-        mutation UserMutation {
-          deleteUser(_id: "${userId}") {
-            _id
-          }
+            const userId = request.params.id;
+
+            const defaultData = `
+                mutation UserMutation {
+                    deleteUser(_id: "${userId}") {
+                        _id
+                    }
+                }
+            `;
+
+            const requestedData = (request.query.query) ? request.query.query : defaultData;
+
+            return graphql(UsersSchema, requestedData).then((response) => {
+
+                return reply(response);
+            });
+        },
+        validate: {
+            params: {
+                id: Joi.objectId()
+            }
         }
-      `;
-
-      const requestedData = (request.query.query) ? request.query.query : defaultData;
-
-      return graphql(UsersSchema, requestedData).then((response) => {
-
-        return reply(response);
-      });
-    },
-    validate: {
-      params: {
-        id: Joi.objectId()
-      }
     }
-  }
 });
 
 // Route to get all the movies in the collection
 server.route({
-  method: "GET",
-  path:"/movies",
-  config: {
-    auth: false,
-    handler: (request, reply) => {
+    method: 'GET',
+    path: '/movies',
+    config: {
+        auth: false,
+        handler: (request, reply) => {
 
-      const defaultData = `
-        {
-          movies {
-            _id
-            title
-            slug
-            year
-            format
-            tmdb_id
-            tmdb_image_url
-            upc
-          }
+            const defaultData = `
+                {
+                    movies {
+                        _id
+                        title
+                        slug
+                        year
+                        format
+                        tmdb_id
+                        tmdb_image_url
+                        upc
+                    }
+                }
+            `;
+
+            const requestedData = (request.query.query) ? request.query.query : defaultData;
+
+            return graphql(MoviesSchema, requestedData).then((response) => {
+
+                return reply(response);
+            });
         }
-      `;
-
-      const requestedData = (request.query.query) ? request.query.query : defaultData;
-
-      return graphql(MoviesSchema, requestedData).then((response) => {
-
-        return reply(response);
-      });
     }
-  }
 });
 
 // Route to Add a movie to the collection
 server.route({
-  method: "POST",
-  path:"/movies",
-  config:{
-    handler: (request, reply) => {
-      const movie = request.payload;
+    method: 'POST',
+    path: '/movies',
+    config: {
+        handler: (request, reply) => {
 
-      const defaultData = `
-        mutation MovieMutation {
-          addMovie(movie: {
-            title: "${movie.title}"
-            year: "${movie.year}"
-            format: "${movie.format}"
-            tmdb_id: "${movie.tmdb_id}"
-            tmdb_image_url: "${movie.tmdb_image_url}"
-            upc: "${movie.upc}"
-          }) {
-            _id
-            title
-            slug
-            year
-            format
-            tmdb_id
-            tmdb_image_url
-            upc
-          }
+            const movie = request.payload;
+
+            const defaultData = `
+                mutation MovieMutation {
+                    addMovie(movie: {
+                        title: "${movie.title}"
+                        year: "${movie.year}"
+                        format: "${movie.format}"
+                        tmdb_id: "${movie.tmdb_id}"
+                        tmdb_image_url: "${movie.tmdb_image_url}"
+                        upc: "${movie.upc}"
+                    }) {
+                        _id
+                        title
+                        slug
+                        year
+                        format
+                        tmdb_id
+                        tmdb_image_url
+                        upc
+                    }
+                }
+            `;
+
+            const requestedData = (request.query.query) ? request.query.query : defaultData;
+
+            return graphql(MoviesSchema, requestedData).then((response) => {
+
+                return reply(response);
+            });
+        },
+        validate: {
+            payload: movieSchema
         }
-      `;
-
-      const requestedData = (request.query.query) ? request.query.query : defaultData;
-
-      return graphql(MoviesSchema, requestedData).then((response) => {
-
-        return reply(response);
-      });
-    },
-    validate: {
-      payload: movieSchema
     }
-  }
 });
 
 // Route to Get a movie by ID in the collection
 server.route({
-  method: "GET",
-  path:"/movies/{id}",
-  config:{
-    auth: false,
-    handler: (request, reply) => {
-      const movieId = request.params.id;
+    method: 'GET',
+    path: '/movies/{id}',
+    config: {
+        auth: false,
+        handler: (request, reply) => {
 
-      const defaultData = `
-        {
-          movie(_id: "${movieId}") {
-            _id
-            title
-            slug
-            year
-            format
-            tmdb_id
-            tmdb_image_url
-            upc
-          }
+            const movieId = request.params.id;
+
+            const defaultData = `
+                {
+                    movie(_id: "${movieId}") {
+                        _id
+                        title
+                        slug
+                        year
+                        format
+                        tmdb_id
+                        tmdb_image_url
+                        upc
+                    }
+                }
+            `;
+
+            const requestedData = (request.query.query) ? request.query.query : defaultData;
+
+            return graphql(MoviesSchema, requestedData).then((response) => {
+
+                return reply(response);
+            });
+        },
+        validate: {
+            params: {
+                id: Joi.objectId()
+            }
         }
-      `;
-
-      const requestedData = (request.query.query) ? request.query.query : defaultData;
-
-      return graphql(MoviesSchema, requestedData).then((response) => {
-
-        return reply(response);
-      });
-    },
-    validate: {
-      params: {
-        id: Joi.objectId()
-      }
     }
-  }
 });
 
 // Route to Update a movie in the collection
 server.route({
-  method: "PUT",
-  path:"/movies/{id}",
-  config:{
-    handler: (request, reply) => {
-      const movieId = request.params.id;
-      const movie = request.payload;
+    method: 'PUT',
+    path: '/movies/{id}',
+    config: {
+        handler: (request, reply) => {
 
-      const defaultData = `
-        mutation MovieMutation {
-          updateMovie(_id: "${movieId}", movie: {
-            title: "${movie.title}"
-            year: "${movie.year}"
-            format: "${movie.format}"
-            tmdb_id: "${movie.tmdb_id}"
-            tmdb_image_url: "${movie.tmdb_image_url}"
-            upc: "${movie.upc}"
-          }) {
-            _id
-          }
+            const movieId = request.params.id;
+            const movie = request.payload;
+
+            const defaultData = `
+                mutation MovieMutation {
+                    updateMovie(_id: "${movieId}", movie: {
+                        title: "${movie.title}"
+                        year: "${movie.year}"
+                        format: "${movie.format}"
+                        tmdb_id: "${movie.tmdb_id}"
+                        tmdb_image_url: "${movie.tmdb_image_url}"
+                        upc: "${movie.upc}"
+                    }) {
+                        _id
+                    }
+                }
+            `;
+
+            const requestedData = (request.query.query) ? request.query.query : defaultData;
+
+            return graphql(MoviesSchema, requestedData).then((response) => {
+
+                return reply(response);
+            });
+        },
+        validate: {
+            params: {
+                id: Joi.objectId()
+            },
+            payload: movieSchema
         }
-      `;
-
-      const requestedData = (request.query.query) ? request.query.query : defaultData;
-
-      return graphql(MoviesSchema, requestedData).then((response) => {
-
-        return reply(response);
-      });
-    },
-    validate: {
-      params: {
-        id: Joi.objectId()
-      },
-      payload: movieSchema
     }
-  }
 });
 
 // Route to Delete a movie from the collection
 server.route({
-  method: "DELETE",
-  path:"/movies/{id}",
-  config:{
-    handler: (request, reply) => {
-      const movieId = request.params.id;
+    method: 'DELETE',
+    path: '/movies/{id}',
+    config: {
+        handler: (request, reply) => {
 
-      const defaultData = `
-        mutation MovieMutation {
-          deleteMovie(_id: "${movieId}") {
-            _id
-          }
+            const movieId = request.params.id;
+
+            const defaultData = `
+                mutation MovieMutation {
+                    deleteMovie(_id: "${movieId}") {
+                        _id
+                    }
+                }
+            `;
+
+            const requestedData = (request.query.query) ? request.query.query : defaultData;
+
+            return graphql(MoviesSchema, requestedData).then((response) => {
+
+                return reply(response);
+            });
+        },
+        validate: {
+            params: {
+                id: Joi.objectId()
+            }
         }
-      `;
-
-      const requestedData = (request.query.query) ? request.query.query : defaultData;
-
-      return graphql(MoviesSchema, requestedData).then((response) => {
-
-        return reply(response);
-      });
-    },
-    validate: {
-      params: {
-        id: Joi.objectId()
-      }
     }
-  }
 });
 
 // Route to get all the formats in the collection
 server.route({
-  method: "GET",
-  path:"/formats",
-  config: {
-    auth: false,
-    handler: (request, reply) => {
+    method: 'GET',
+    path: '/formats',
+    config: {
+        auth: false,
+        handler: (request, reply) => {
 
-      const defaultData = `
-        {
-          formats {
-            _id
-            title
-            slug
-          }
+            const defaultData = `
+                {
+                    formats {
+                        _id
+                        title
+                        slug
+                    }
+                }
+            `;
+
+            const requestedData = (request.query.query) ? request.query.query : defaultData;
+
+            return graphql(FormatsSchema, requestedData).then((response) => {
+
+                return reply(response);
+            });
         }
-      `;
-
-      const requestedData = (request.query.query) ? request.query.query : defaultData;
-
-      return graphql(FormatsSchema, requestedData).then((response) => {
-
-        return reply(response);
-      });
     }
-  }
 });
 
 // Route to Add movie format(s) to the collection
 server.route({
-  method: "POST",
-  path:"/formats",
-  config:{
-    handler: (request, reply) => {
-      const format = request.payload;
+    method: 'POST',
+    path: '/formats',
+    config: {
+        handler: (request, reply) => {
 
-      const defaultData = `
-        mutation FormatsMutation {
-          addFormat(format: {
-            title: "${format.title}"
-          }) {
-            _id
-            title
-            slug
-          }
+            const format = request.payload;
+
+            const defaultData = `
+                mutation FormatsMutation {
+                    addFormat(format: {
+                        title: "${format.title}"
+                    }) {
+                        _id
+                        title
+                        slug
+                    }
+                }
+            `;
+
+            const requestedData = (request.query.query) ? request.query.query : defaultData;
+
+            return graphql(FormatsSchema, requestedData).then((response) => {
+
+                return reply(response);
+            });
+        },
+        validate: {
+            payload: formatSchema
         }
-      `;
-
-      const requestedData = (request.query.query) ? request.query.query : defaultData;
-
-      return graphql(FormatsSchema, requestedData).then((response) => {
-
-        return reply(response);
-      });
-    },
-    validate: {
-      payload: formatSchema
     }
-  }
 });
 
 // Route to Get a movie formats by ID in the collection
 server.route({
-  method: "GET",
-  path:"/formats/{id}",
-  config:{
-    auth: false,
-    handler: (request, reply) => {
-      const formatId = request.params.id;
+    method: 'GET',
+    path: '/formats/{id}',
+    config: {
+        auth: false,
+        handler: (request, reply) => {
 
-      const defaultData = `
-        {
-          format(_id: "${formatId}") {
-            _id
-            title
-            slug
-          }
+            const formatId = request.params.id;
+
+            const defaultData = `
+                {
+                    format(_id: "${formatId}") {
+                        _id
+                        title
+                        slug
+                    }
+                }
+            `;
+
+            const requestedData = (request.query.query) ? request.query.query : defaultData;
+
+            return graphql(FormatsSchema, requestedData).then((response) => {
+
+                return reply(response);
+            });
+        },
+        validate: {
+            params: {
+                id: Joi.objectId()
+            }
         }
-      `;
-
-      const requestedData = (request.query.query) ? request.query.query : defaultData;
-
-      return graphql(FormatsSchema, requestedData).then((response) => {
-
-        return reply(response);
-      });
-    },
-    validate: {
-      params: {
-        id: Joi.objectId()
-      }
     }
-  }
 });
 
 // Route to Update a movie format in the collection
 server.route({
-  method: "PUT",
-  path:"/formats/{id}",
-  config:{
-    handler: (request, reply) => {
-      const formatId = request.params.id;
-      const format = request.payload;
+    method: 'PUT',
+    path: '/formats/{id}',
+    config: {
+        handler: (request, reply) => {
 
-      const defaultData = `
-        mutation FormatsMutation {
-          updateFormat(_id: "${formatId}", format: {
-            title: "${format.title}"
-          }) {
-            _id
-          }
+            const formatId = request.params.id;
+            const format = request.payload;
+
+            const defaultData = `
+                mutation FormatsMutation {
+                    updateFormat(_id: "${formatId}", format: {
+                        title: "${format.title}"
+                    }) {
+                        _id
+                    }
+                }
+            `;
+
+            const requestedData = (request.query.query) ? request.query.query : defaultData;
+
+            return graphql(FormatsSchema, requestedData).then((response) => {
+
+                return reply(response);
+            });
+        },
+        validate: {
+            params: {
+                id: Joi.objectId()
+            },
+            payload: formatSchema
         }
-      `;
-
-      const requestedData = (request.query.query) ? request.query.query : defaultData;
-
-      return graphql(FormatsSchema, requestedData).then((response) => {
-
-        return reply(response);
-      });
-    },
-    validate: {
-      params: {
-        id: Joi.objectId()
-      },
-      payload: formatSchema
     }
-  }
 });
 
 // Route to Delete a movie format from the collection
 server.route({
-  method: "DELETE",
-  path:"/formats/{id}",
-  config:{
-    handler: (request, reply) => {
-      const formatId = request.params.id;
+    method: 'DELETE',
+    path: '/formats/{id}',
+    config: {
+        handler: (request, reply) => {
 
-      const defaultData = `
-        mutation FormatsMutation {
-          deleteFormat(_id: "${formatId}") {
-            _id
-          }
+            const formatId = request.params.id;
+
+            const defaultData = `
+                mutation FormatsMutation {
+                    deleteFormat(_id: "${formatId}") {
+                        _id
+                    }
+                }
+            `;
+
+            const requestedData = (request.query.query) ? request.query.query : defaultData;
+
+            return graphql(FormatsSchema, requestedData).then((response) => {
+
+                return reply(response);
+            });
+        },
+        validate: {
+            params: {
+                id: Joi.objectId()
+            }
         }
-      `;
-
-      const requestedData = (request.query.query) ? request.query.query : defaultData;
-
-      return graphql(FormatsSchema, requestedData).then((response) => {
-
-        return reply(response);
-      });
-    },
-    validate: {
-      params: {
-        id: Joi.objectId()
-      }
     }
-  }
 });
 
 if (createFirstUser) {
-  const firstUser = `
-    mutation UserMutation {
-      addUser(user: {
-        email: "${process.env.create_user_email}"
-        password: "${process.env.create_user_password}"
-      }) {
-        _id
-      }
-    }
-  `;
+    const firstUser = `
+        mutation UserMutation {
+            addUser(user: {
+                email: "${process.env.create_user_email}"
+                password: "${process.env.create_user_password}"
+            }) {
+                _id
+            }
+        }
+    `;
 
-  graphql(UsersSchema, firstUser).then((response) => {
+    graphql(UsersSchema, firstUser).then((response) => {
 
-    return console.log(response);
-  });
+        return console.log(response);
+    });
 }
 
-server.start(err => {
+if (!module.parent) {
+    server.start((err) => {
 
-  if (err) {
-    throw err;
-  }
+        if (err) {
+            throw err;
+        }
 
-  console.log(`Server started at ${ server.info.uri }`);
+        console.log(`Server started at ${server.info.uri}`);
 
-});
+    });
+}
+
+module.exports = server;

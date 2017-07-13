@@ -4,7 +4,7 @@
   "main": "src/server.js",
   "author": "Steven Weathers",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "lab",
     "start": "node src/server.js"
   },
   "dependencies": {
@@ -18,5 +18,12 @@
     "mongodb": "^2.2.29",
     "password-sheriff": "^1.1.0",
     "slugify": "^1.1.0"
+  },
+  "devDependencies": {
+    "eslint": "^4.2.0",
+    "eslint-config-hapi": "^10.0.0",
+    "eslint-plugin-hapi": "^4.0.0",
+    "lab": "^14.1.0",
+    "sinon": "^2.3.7"
   }
 }
