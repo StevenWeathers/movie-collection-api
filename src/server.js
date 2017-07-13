@@ -7,14 +7,18 @@ Joi.objectId = require('joi-objectid')(Joi);
 const server = new Hapi.Server();
 const JWT = require('jsonwebtoken');
 const HapiAuthJWT = require('hapi-auth-jwt2');
-const Bcrypt = require('Bcryptjs');
-const Slugify = require('Slugify');
+const Bcrypt = require('bcryptjs');
+const Slugify = require('slugify');
 
 const { MongoClient, ObjectId } = require('mongodb');
 const mongoHost = process.env.mongo_host || 'db';
 const mongoPort = process.env.mongo_port || '27017';
 const mongoCollection = process.env.mongo_collection || 'moviecollection';
 const mongoDbUrl = `mongodb://${mongoHost}:${mongoPort}/${mongoCollection}`;
+const Mongoose = require('mongoose');
+Mongoose.connect(mongoDbUrl);
+const MovieModel = require('./models/Movie');
+
 const createFirstUser = process.env.create_user || false;
 
 const {
@@ -97,24 +101,9 @@ const MoviesSchema = new GraphQLSchema({
 
                     const foundMovie = new Promise((resolve, reject) => {
 
-                        return MongoClient.connect(mongoDbUrl, (err, db) => {
+                        MovieModel.getMovie(args._id, (err, movie) => {
 
-                            if (!err) {
-                                const collection = db.collection('movies');
-
-                                collection.findOne({
-                                    _id: ObjectId(args._id)
-                                }, (err, movie) => {
-
-                                    db.close();
-
-                                    err ? reject(err) : resolve(movie);
-                                });
-                            }
-                            else {
-                                reject(err);
-                            }
-
+                            err ? reject(err) : resolve(movie);
                         });
                     });
 
@@ -127,21 +116,9 @@ const MoviesSchema = new GraphQLSchema({
 
                     const foundMovies = new Promise((resolve, reject) => {
 
-                        return MongoClient.connect(mongoDbUrl, (err, db) => {
+                        MovieModel.getMovies((err, movies) => {
 
-                            if (!err) {
-                                const collection = db.collection('movies');
-
-                                collection.find({}).toArray((err, movies) => {
-
-                                    db.close();
-
-                                    err ? reject(err) : resolve(movies);
-                                });
-                            }
-                            else {
-                                reject(err);
-                            }
+                            err ? reject(err) : resolve(movies);
                         });
                     });
 
