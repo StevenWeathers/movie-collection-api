@@ -36,10 +36,10 @@ const user = {
         Bcrypt.genSalt(10, (err, salt) => {
 
             if (!err) {
-                Bcrypt.hash(user.password, salt, (err, hash) => {
+                Bcrypt.hash(data.password, salt, (err, hash) => {
 
                     if (!err) {
-                        user.password = hash;
+                        data.password = hash;
 
                         User.insertOne(data, (err, result) => {
 
