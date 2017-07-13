@@ -40,7 +40,9 @@ const movie = {
 
         data.slug = Slugify(`${data.year} ${data.title}`).toLowerCase();
 
-        Movie.insertOne(data, (err, result) => {
+        const newMovie = new Movie(data);
+
+        newMovie.save((err, result) => {
 
             (err) ? cb(err) : cb(null, result);
         });

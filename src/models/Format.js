@@ -35,7 +35,9 @@ const format = {
 
         data.slug = Slugify(`${data.title}`).toLowerCase();
 
-        Format.insertOne(data, (err, result) => {
+        const newFormat = new Format(data);
+
+        newFormat.save((err, result) => {
 
             (err) ? cb(err) : cb(null, result);
         });

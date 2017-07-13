@@ -41,13 +41,15 @@ const user = {
                     if (!err) {
                         data.password = hash;
 
-                        User.insertOne(data, (err, result) => {
+                        const newUser = new User(data);
+
+                        newUser.save((err, result) => {
 
                             if (!err) {
 
                                 if (!err) {
-                                    delete result.ops[0].password;
-                                    cb(null, result.ops[0]);
+                                    delete result.password;
+                                    cb(null, result);
                                 }
                                 else {
                                     cb(err);
