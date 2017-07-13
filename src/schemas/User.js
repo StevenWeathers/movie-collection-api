@@ -1,6 +1,6 @@
 'use strict';
 
-const Bcrypt = require('bcryptjs');
+const UserModel = require('../models/User');
 
 const {
     GraphQLSchema,
@@ -51,25 +51,9 @@ const UsersSchema = new GraphQLSchema({
 
                     const foundUser = new Promise((resolve, reject) => {
 
-                        return MongoClient.connect(mongoDbUrl, (err, db) => {
+                        UserModel.getUser(args._id, (err, user) => {
 
-                            if (!err) {
-                                const collection = db.collection('users');
-
-                                collection.findOne({
-                                    _id: ObjectId(args._id)
-                                }, {
-                                    'password': false
-                                }, (err, user) => {
-
-                                    db.close();
-
-                                    err ? reject(err) : resolve(user);
-                                });
-                            }
-                            else {
-                                reject(err);
-                            }
+                            err ? reject(err) : resolve(user);
                         });
                     });
 
@@ -82,23 +66,9 @@ const UsersSchema = new GraphQLSchema({
 
                     const foundUsers = new Promise((resolve, reject) => {
 
-                        return MongoClient.connect(mongoDbUrl, (err, db) => {
+                        UserModel.getUsers((err, users) => {
 
-                            if (!err) {
-                                const collection = db.collection('users');
-
-                                collection.find({}, {
-                                    'password': false
-                                }).toArray((err, users) => {
-
-                                    db.close();
-
-                                    err ? reject(err) : resolve(users);
-                                });
-                            }
-                            else {
-                                reject(err);
-                            }
+                            err ? reject(err) : resolve(users);
                         });
                     });
 
@@ -123,52 +93,9 @@ const UsersSchema = new GraphQLSchema({
 
                     const createdUser = new Promise((resolve, reject) => {
 
-                        return MongoClient.connect(mongoDbUrl, (err, db) => {
+                        UserModel.createUser(user, (err, newUser) => {
 
-                            if (!err) {
-                                const collection = db.collection('users');
-
-                                Bcrypt.genSalt(10, (err, salt) => {
-
-                                    if (!err) {
-                                        Bcrypt.hash(user.password, salt, (err, hash) => {
-
-                                            if (!err) {
-                                                user.password = hash;
-
-                                                collection.insertOne(user, (err, result) => {
-
-                                                    if (!err) {
-                                                        collection.createIndex({ 'email': 1 }, { unique: true });
-                                                        db.close();
-
-                                                        if (!err) {
-                                                            delete result.ops[0].password;
-                                                            resolve(result.ops[0]);
-                                                        }
-                                                        else {
-                                                            reject(err);
-                                                        }
-
-                                                    }
-                                                    else {
-                                                        reject(err);
-                                                    }
-                                                });
-                                            }
-                                            else {
-                                                reject(err);
-                                            }
-                                        });
-                                    }
-                                    else {
-                                        reject(err);
-                                    }
-                                });
-                            }
-                            else {
-                                reject(err);
-                            }
+                            err ? reject(err) : resolve(newUser);
                         });
                     });
 
@@ -190,28 +117,9 @@ const UsersSchema = new GraphQLSchema({
 
                     const updatedUser = new Promise((resolve, reject) => {
 
-                        const salt = Bcrypt.genSaltSync(10);
-                        user.password = Bcrypt.hashSync(user.password, salt);
+                        UserModel.updateUser(_id, user, (err, result) => {
 
-                        return MongoClient.connect(mongoDbUrl, (err, db) => {
-
-                            if (!err) {
-                                const collection = db.collection('users');
-
-                                collection.updateOne({
-                                    _id: ObjectId(_id)
-                                }, {
-                                    $set: user
-                                }, (err, result) => {
-
-                                    db.close();
-
-                                    err ? reject(err) : resolve(result.modifiedCount === 1 ? { _id } : {});
-                                });
-                            }
-                            else {
-                                reject(err);
-                            }
+                            err ? reject(err) : resolve(result.modifiedCount === 1 ? { _id } : {});
                         });
                     });
 
@@ -230,23 +138,11 @@ const UsersSchema = new GraphQLSchema({
 
                     const deletedUser = new Promise((resolve, reject) => {
 
-                        return MongoClient.connect(mongoDbUrl, (err, db) => {
+                        UserModel.deleteUser({
+                            _id
+                        }, (err, result) => {
 
-                            if (!err) {
-                                const collection = db.collection('users');
-
-                                collection.deleteOne({
-                                    _id: ObjectId(_id)
-                                }, (err, result) => {
-
-                                    db.close();
-
-                                    err ? reject(err) : resolve(result.deletedCount === 1 ? { _id } : {});
-                                });
-                            }
-                            else {
-                                reject(err);
-                            }
+                            err ? reject(err) : resolve(result.deletedCount === 1 ? { _id } : {});
                         });
                     });
 

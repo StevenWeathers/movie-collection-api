@@ -39,7 +39,7 @@ describe('Movie Routes', () => {
         done();
     });
 
-    it('should get all products', (done) => {
+    it('should get all movies', (done) => {
 
         MovieModel.getMovies.yields(null, [
             {
@@ -81,7 +81,7 @@ describe('Movie Routes', () => {
         });
     });
 
-    it('should get a product by id', (done) => {
+    it('should get a user by id', (done) => {
 
         const movieId = '59586ecb1d814b0016ce423b';
 

@@ -1,5 +1,7 @@
 'use strict';
 
+const FormatModel = require('../models/Format');
+
 const {
     GraphQLSchema,
     GraphQLObjectType,
