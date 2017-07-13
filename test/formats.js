@@ -71,7 +71,23 @@ describe('Format Routes', () => {
         });
     });
 
-    it('should get a user by id', (done) => {
+    it('should throw error when getting formats fail', (done) => {
+
+        FormatModel.getFormats.yields(new Error('ERROR!'));
+
+        Server.inject({
+            method: 'GET',
+            url: '/formats'
+        }, (response) => {
+
+            expect(response.statusCode).to.equal(500);
+            expect(JSON.parse(response.payload).errors).to.not.be.undefined();
+
+            done();
+        });
+    });
+
+    it('should get a format by id', (done) => {
 
         const formatId = '59586ecb1d814b0016ce423b';
 
@@ -96,6 +112,24 @@ describe('Format Routes', () => {
                     }
                 }
             });
+
+            done();
+        });
+    });
+
+    it('should throw error when getting format by id fails', (done) => {
+
+        const formatId = '59586ecb1d814b0016ce423b';
+
+        FormatModel.getFormat.yields(new Error('ERROR!'));
+
+        Server.inject({
+            method: 'GET',
+            url: `/formats/${formatId}`
+        }, (response) => {
+
+            expect(response.statusCode).to.equal(500);
+            expect(JSON.parse(response.payload).errors).to.not.be.undefined();
 
             done();
         });
@@ -126,6 +160,28 @@ describe('Format Routes', () => {
                     'addFormat': formatResponse
                 }
             });
+
+            done();
+        });
+    });
+
+    it('should throw error when adding a format fails', (done) => {
+
+        const formatPayload = {
+            title: '4K Bluray'
+        };
+
+        FormatModel.createFormat.yields(new Error('ERROR!'));
+
+        Server.inject({
+            method: 'POST',
+            url: '/formats',
+            payload: formatPayload,
+            headers: {}
+        }, (response) => {
+
+            expect(response.statusCode).to.equal(500);
+            expect(JSON.parse(response.payload).errors).to.not.be.undefined();
 
             done();
         });
@@ -164,6 +220,62 @@ describe('Format Routes', () => {
         });
     });
 
+    it('should not a format when nothing is changed', (done) => {
+
+        const _id = '59586ecb1d814b0016ce423b';
+        const formatPayload = {
+            title: '4K Bluray'
+        };
+
+        const formatResponse = _.clone(formatPayload, true);
+        formatResponse._id = _id;
+        formatResponse.slug = '4k-bluray';
+
+        FormatModel.updateFormat.yields(null, { modifiedCount: 0 });
+
+        Server.inject({
+            method: 'PUT',
+            url: `/formats/${_id}`,
+            payload: formatPayload,
+            headers: {}
+        }, (response) => {
+
+            expect(response.statusCode).to.equal(200);
+            expect(JSON.parse(response.payload)).to.equal({
+                'data': {
+                    'updateFormat': {
+                        _id: null
+                    }
+                }
+            });
+
+            done();
+        });
+    });
+
+    it('should throw error when updating a format fails', (done) => {
+
+        const _id = '59586ecb1d814b0016ce423b';
+        const formatPayload = {
+            title: '4K Bluray'
+        };
+
+        FormatModel.updateFormat.yields(new Error('ERROR!'));
+
+        Server.inject({
+            method: 'PUT',
+            url: `/formats/${_id}`,
+            payload: formatPayload,
+            headers: {}
+        }, (response) => {
+
+            expect(response.statusCode).to.equal(500);
+            expect(JSON.parse(response.payload).errors).to.not.be.undefined();
+
+            done();
+        });
+    });
+
     it('should delete a format', (done) => {
 
         const _id = '59586ecb1d814b0016ce423b';
@@ -184,6 +296,50 @@ describe('Format Routes', () => {
                     }
                 }
             });
+
+            done();
+        });
+    });
+
+    it('should not delete a format if it doesnt exist', (done) => {
+
+        const _id = '59586ecb1d814b0016ce423b';
+
+        FormatModel.deleteFormat.yields(null, { deletedCount: 0 });
+
+        Server.inject({
+            method: 'DELETE',
+            url: `/formats/${_id}`,
+            headers: {}
+        }, (response) => {
+
+            expect(response.statusCode).to.equal(200);
+            expect(JSON.parse(response.payload)).to.equal({
+                data: {
+                    deleteFormat: {
+                        _id: null
+                    }
+                }
+            });
+
+            done();
+        });
+    });
+
+    it('should throw error when deleting a format fails', (done) => {
+
+        const _id = '59586ecb1d814b0016ce423b';
+
+        FormatModel.deleteFormat.yields(new Error('ERROR!'));
+
+        Server.inject({
+            method: 'DELETE',
+            url: `/formats/${_id}`,
+            headers: {}
+        }, (response) => {
+
+            expect(response.statusCode).to.equal(500);
+            expect(JSON.parse(response.payload).errors).to.not.be.undefined();
 
             done();
         });

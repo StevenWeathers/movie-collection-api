@@ -577,7 +577,13 @@ server.route({
 
             return graphql(FormatsSchema, requestedData).then((response) => {
 
-                return reply(response);
+                let responseCode = 200;
+
+                if (typeof response.errors !== 'undefined') {
+                    responseCode = 500;
+                }
+
+                return reply(response).code(responseCode);
             });
         }
     }
@@ -609,7 +615,13 @@ server.route({
 
             return graphql(FormatsSchema, requestedData).then((response) => {
 
-                return reply(response);
+                let responseCode = 200;
+
+                if (typeof response.errors !== 'undefined') {
+                    responseCode = 500;
+                }
+
+                return reply(response).code(responseCode);
             });
         },
         validate: {
@@ -642,7 +654,13 @@ server.route({
 
             return graphql(FormatsSchema, requestedData).then((response) => {
 
-                return reply(response);
+                let responseCode = 200;
+
+                if (typeof response.errors !== 'undefined') {
+                    responseCode = 500;
+                }
+
+                return reply(response).code(responseCode);
             });
         },
         validate: {
@@ -678,7 +696,13 @@ server.route({
 
             return graphql(FormatsSchema, requestedData).then((response) => {
 
-                return reply(response);
+                let responseCode = 200;
+
+                if (typeof response.errors !== 'undefined') {
+                    responseCode = 500;
+                }
+
+                return reply(response).code(responseCode);
             });
         },
         validate: {
@@ -712,7 +736,13 @@ server.route({
 
             return graphql(FormatsSchema, requestedData).then((response) => {
 
-                return reply(response);
+                let responseCode = 200;
+
+                if (typeof response.errors !== 'undefined') {
+                    responseCode = 500;
+                }
+
+                return reply(response).code(responseCode);
             });
         },
         validate: {

@@ -81,7 +81,7 @@ describe('Movie Routes', () => {
         });
     });
 
-    it('should get a user by id', (done) => {
+    it('should get a movies by id', (done) => {
 
         const movieId = '59586ecb1d814b0016ce423b';
 
