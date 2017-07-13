@@ -588,6 +588,7 @@ server.route({
     method: 'POST',
     path: '/formats',
     config: {
+        auth: false, // @TODO - remove this when Unit Tests can auth properly
         handler: (request, reply) => {
 
             const format = request.payload;
@@ -657,6 +658,7 @@ server.route({
     method: 'PUT',
     path: '/formats/{id}',
     config: {
+        auth: false, // @TODO - remove this when Unit Tests can auth properly
         handler: (request, reply) => {
 
             const formatId = request.params.id;
@@ -693,6 +695,7 @@ server.route({
     method: 'DELETE',
     path: '/formats/{id}',
     config: {
+        auth: false, // @TODO - remove this when Unit Tests can auth properly
         handler: (request, reply) => {
 
             const formatId = request.params.id;

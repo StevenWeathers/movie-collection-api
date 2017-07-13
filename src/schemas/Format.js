@@ -52,23 +52,9 @@ const FormatsSchema = new GraphQLSchema({
                     const foundFormat = new Promise((resolve, reject) => {
 
 
-                        return MongoClient.connect(mongoDbUrl, (err, db) => {
+                        FormatModel.getFormat(args._id, (err, format) => {
 
-                            if (!err) {
-                                const collection = db.collection('formats');
-
-                                collection.findOne({
-                                    _id: ObjectId(args._id)
-                                }, (err, format) => {
-
-                                    db.close();
-
-                                    err ? reject(err) : resolve(format);
-                                });
-                            }
-                            else {
-                                reject(err);
-                            }
+                            err ? reject(err) : resolve(format);
                         });
                     });
 
@@ -81,21 +67,9 @@ const FormatsSchema = new GraphQLSchema({
 
                     const foundFormats = new Promise((resolve, reject) => {
 
-                        return MongoClient.connect(mongoDbUrl, (err, db) => {
+                        FormatModel.getFormats((err, formats) => {
 
-                            if (!err) {
-                                const collection = db.collection('formats');
-
-                                collection.find({}).toArray((err, formats) => {
-
-                                    db.close();
-
-                                    err ? reject(err) : resolve(formats);
-                                });
-                            }
-                            else {
-                                reject(err);
-                            }
+                            err ? reject(err) : resolve(formats);
                         });
                     });
 
@@ -120,24 +94,9 @@ const FormatsSchema = new GraphQLSchema({
 
                     const createdFormat = new Promise((resolve, reject) => {
 
-                        format.slug = Slugify(format.title).toLowerCase();
+                        FormatModel.createFormat(format, (err, newFormat) => {
 
-                        return MongoClient.connect(mongoDbUrl, (err, db) => {
-
-                            if (!err) {
-                                const collection = db.collection('formats');
-
-                                collection.insertOne(format, (err, result) => {
-
-                                    collection.createIndex({ 'slug': 1 }, { unique: true });
-                                    db.close();
-
-                                    err ? reject(err) : resolve(result.ops[0]);
-                                });
-                            }
-                            else {
-                                reject(err);
-                            }
+                            err ? reject(err) : resolve(newFormat);
                         });
                     });
 
@@ -159,27 +118,9 @@ const FormatsSchema = new GraphQLSchema({
 
                     const updatedFormat = new Promise((resolve, reject) => {
 
-                        format.slug = Slugify(format.title).toLowerCase();
+                        FormatModel.updateFormat(_id, format, (err, result) => {
 
-                        return MongoClient.connect(mongoDbUrl, (err, db) => {
-
-                            if (!err) {
-                                const collection = db.collection('formats');
-
-                                collection.updateOne({
-                                    _id: ObjectId(_id)
-                                }, {
-                                    $set: format
-                                }, (err, result) => {
-
-                                    db.close();
-
-                                    err ? reject(err) : resolve(result.modifiedCount === 1 ? { _id } : {});
-                                });
-                            }
-                            else {
-                                reject(err);
-                            }
+                            err ? reject(err) : resolve(result.modifiedCount === 1 ? { _id } : {});
                         });
                     });
 
@@ -198,23 +139,11 @@ const FormatsSchema = new GraphQLSchema({
 
                     const deletedFormat = new Promise((resolve, reject) => {
 
-                        return MongoClient.connect(mongoDbUrl, (err, db) => {
+                        FormatModel.deleteFormat({
+                            _id
+                        }, (err, result) => {
 
-                            if (!err) {
-                                const collection = db.collection('formats');
-
-                                collection.deleteOne({
-                                    _id: ObjectId(_id)
-                                }, (err, result) => {
-
-                                    db.close();
-
-                                    err ? reject(err) : resolve(result.deletedCount === 1 ? { _id } : {});
-                                });
-                            }
-                            else {
-                                reject(err);
-                            }
+                            err ? reject(err) : resolve(result.deletedCount === 1 ? { _id } : {});
                         });
                     });
 
