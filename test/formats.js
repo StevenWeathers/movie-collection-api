@@ -7,8 +7,8 @@ const lab = exports.lab = Lab.script();
 
 const describe = lab.describe;
 const it = lab.it;
-const before = lab.before;
-const after = lab.after;
+const before = lab.beforeEach;
+const after = lab.afterEach;
 const expect = Lab.expect;
 
 // require hapi server
