@@ -8,23 +8,26 @@ const server = new Hapi.Server();
 const JWT = require('jsonwebtoken');
 const HapiAuthJWT = require('hapi-auth-jwt2');
 const Bcrypt = require('bcryptjs');
-
 const { MongoClient } = require('mongodb');
+const Mongoose = require('mongoose');
+const { graphql } = require('graphql');
+// GraphQL Schemas
+const MoviesSchema = require('./schemas/Movie');
+const FormatsSchema = require('./schemas/Format');
+const UsersSchema = require('./schemas/User');
+// Mongoose Models
+const UsersModel = require('./models/User');
+
 const mongoHost = process.env.mongo_host || 'db';
 const mongoPort = process.env.mongo_port || '27017';
 const mongoCollection = process.env.mongo_collection || 'moviecollection';
 const mongoDbUrl = `mongodb://${mongoHost}:${mongoPort}/${mongoCollection}`;
-const Mongoose = require('mongoose');
-
 const createFirstUser = process.env.create_user || false;
-
-const {
-    graphql
-} = require('graphql');
-
-const MoviesSchema = require('./schemas/Movie');
-const FormatsSchema = require('./schemas/Format');
-const UsersSchema = require('./schemas/User');
+const serverPort = process.env.PORT || 8080;
+// JWT settings
+const secretKey = process.env.jwtkey || 'everythingisawesome';
+const jwtAlgorithm = process.env.jwtalgo || 'HS256';
+const jwtExpires = process.env.jwtexpires || '1h';
 
 // Joi Validation Schemas
 const movieSchema = Joi.object().keys({
@@ -81,21 +84,14 @@ const userSchema = Joi.object().keys({
     password: joi.password().minimum().required()
 });
 
-// JWT settings
-const secretKey = process.env.jwtkey || 'everythingisawesome';
-const jwtAlgorithm = process.env.jwtalgo || 'HS256';
-const jwtExpires = process.env.jwtexpires || '1h';
-
 server.connection({
-    port: process.env.PORT || 8080
+    port: serverPort
 });
 
 server.register(HapiAuthJWT, (err) => {
 
     if (!err) {
         const validate = (decoded, request, callback) => {
-
-            console.log(decoded);
 
             return MongoClient.connect(mongoDbUrl, (err, db) => {
 
@@ -150,40 +146,28 @@ server.route({
 
             const { email, password } = request.payload;
 
-            return MongoClient.connect(mongoDbUrl, (err, db) => {
+            UsersModel.validatePassword(email, password, (err, isValid) => {
 
                 if (!err) {
-                    const collection = db.collection('users');
+                    if (isValid) {
+                        const token = JWT.sign({
+                            email
+                        }, secretKey, {
+                            algorithm: jwtAlgorithm,
+                            expiresIn: jwtExpires
+                        });
 
-                    collection.findOne({ email }, (err, user) => {
-
-                        db.close();
-
-                        if (!err) {
-                            if (user !== null && Bcrypt.compareSync(password, user.password)) {
-                                const token = JWT.sign({
-                                    email
-                                }, secretKey, {
-                                    algorithm: jwtAlgorithm,
-                                    expiresIn: jwtExpires
-                                });
-
-                                reply({
-                                    token
-                                });
-                            }
-                            else {
-                                reply({
-                                    'statusCode': 401,
-                                    'error': 'Unauthorized',
-                                    'message': 'Incorrect email/password combination'
-                                }).code(401);
-                            }
-                        }
-                        else {
-                            reply().code(500);
-                        }
-                    });
+                        reply({
+                            token
+                        });
+                    }
+                    else {
+                        reply({
+                            'statusCode': 401,
+                            'error': 'Unauthorized',
+                            'message': 'Incorrect email/password combination'
+                        }).code(401);
+                    }
                 }
                 else {
                     reply().code(500);

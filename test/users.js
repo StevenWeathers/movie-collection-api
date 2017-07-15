@@ -24,6 +24,7 @@ describe('User Routes', () => {
         Sinon.stub(UserModel, 'createUser');
         Sinon.stub(UserModel, 'updateUser');
         Sinon.stub(UserModel, 'deleteUser');
+        Sinon.stub(UserModel, 'validatePassword');
 
         done();
     });
@@ -35,6 +36,7 @@ describe('User Routes', () => {
         UserModel.createUser.restore();
         UserModel.updateUser.restore();
         UserModel.deleteUser.restore();
+        UserModel.validatePassword.restore();
 
         done();
     });
@@ -125,6 +127,33 @@ describe('User Routes', () => {
         });
     });
 
+    describe('when password doesnt meet requirements', () => {
+
+        it('should fail to add a new User', (done) => {
+
+            const UserPayload = {
+                email: 'steven@weathers.me',
+                password: 'vendetta'
+            };
+
+            const UserResponse = { _id: '59586ecb1d814b0016ce423b' };
+            UserModel.createUser.yields(null, UserResponse);
+
+            Server.inject({
+                method: 'POST',
+                url: '/users',
+                payload: UserPayload,
+                headers: {}
+            }, (response) => {
+
+                expect(response.statusCode).to.equal(400);
+                expect(JSON.parse(response.payload).error).to.exist();
+
+                done();
+            });
+        });
+    });
+
     it('should update a User', (done) => {
 
         const _id = '59586ecb1d814b0016ce423b';
@@ -180,6 +209,83 @@ describe('User Routes', () => {
             });
 
             done();
+        });
+    });
+
+    describe('when auth route is called with valid email and password', () => {
+
+        it('should return a JWT token', (done) => {
+
+            const UserPayload = {
+                email: 'steven@weathers.me',
+                password: 'vendetta2017'
+            };
+
+            UserModel.validatePassword.yields(null, true);
+
+            Server.inject({
+                method: 'POST',
+                url: '/auth',
+                payload: UserPayload,
+                headers: {}
+            }, (response) => {
+
+                expect(response.statusCode).to.equal(200);
+                expect(JSON.parse(response.payload).token).to.be.string();
+
+                done();
+            });
+        });
+    });
+
+    describe('when auth route is called with valid email and invalid password', () => {
+
+        it('should not return a JWT', (done) => {
+
+            const UserPayload = {
+                email: 'steven@weathers.me',
+                password: 'vendetta2017'
+            };
+
+            UserModel.validatePassword.yields(null, false);
+
+            Server.inject({
+                method: 'POST',
+                url: '/auth',
+                payload: UserPayload,
+                headers: {}
+            }, (response) => {
+
+                expect(response.statusCode).to.equal(401);
+                expect(JSON.parse(response.payload).token).to.be.undefined();
+
+                done();
+            });
+        });
+    });
+
+    describe('when auth route is called and something goes horribly wrong', () => {
+
+        it('should not return a JWT', (done) => {
+
+            const UserPayload = {
+                email: 'steven@weathers.me',
+                password: 'vendetta2017'
+            };
+
+            UserModel.validatePassword.yields(new Error("oh my..."));
+
+            Server.inject({
+                method: 'POST',
+                url: '/auth',
+                payload: UserPayload,
+                headers: {}
+            }, (response) => {
+
+                expect(response.statusCode).to.equal(500);
+
+                done();
+            });
         });
     });
 });

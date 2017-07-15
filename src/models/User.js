@@ -93,6 +93,23 @@ const user = {
 
             err ? cb(err) : cb(null, result.deletedCount === 1 ? { _id } : {});
         });
+    },
+    validatePassword: (email, password, cb) => {
+
+        User.findOne({ email }, (err, foundUser) => {
+
+            if (!err) {
+                if (foundUser !== null && Bcrypt.compareSync(password, foundUser.password)) {
+                    cb(null, true);
+                }
+                else {
+                    cb(null, false);
+                }
+            }
+            else {
+                cb(err);
+            }
+        });
     }
 };
 
