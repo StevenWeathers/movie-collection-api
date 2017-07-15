@@ -110,6 +110,13 @@ const user = {
                 cb(err);
             }
         });
+    },
+    getUserByEmail: (email, cb) => {
+
+        collection.findOne({ email }, (err, foundUser) => {
+
+            cb(err, foundUser);
+        });
     }
 };
 

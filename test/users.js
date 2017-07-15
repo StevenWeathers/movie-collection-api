@@ -273,7 +273,7 @@ describe('User Routes', () => {
                 password: 'vendetta2017'
             };
 
-            UserModel.validatePassword.yields(new Error("oh my..."));
+            UserModel.validatePassword.yields(new Error('oh my...'));
 
             Server.inject({
                 method: 'POST',

@@ -7,8 +7,6 @@ Joi.objectId = require('joi-objectid')(Joi);
 const server = new Hapi.Server();
 const JWT = require('jsonwebtoken');
 const HapiAuthJWT = require('hapi-auth-jwt2');
-const Bcrypt = require('bcryptjs');
-const { MongoClient } = require('mongodb');
 const Mongoose = require('mongoose');
 const { graphql } = require('graphql');
 // GraphQL Schemas
@@ -93,30 +91,18 @@ server.register(HapiAuthJWT, (err) => {
     if (!err) {
         const validate = (decoded, request, callback) => {
 
-            return MongoClient.connect(mongoDbUrl, (err, db) => {
+            UsersModel.getUserByEmail(decoded.email, (err, foundUser) => {
 
                 if (!err) {
-                    const collection = db.collection('users');
-
-                    collection.findOne({ 'email': decoded.email }, (err, user) => {
-
-                        db.close();
-
-                        if (!err) {
-                            if (user) {
-                                callback(null, true); // session is valid
-                            }
-                            else {
-                                callback(null, false); // session expired
-                            }
-                        }
-                        else {
-                            callback(null, false); // session expired
-                        }
-                    });
+                    if (foundUser) {
+                        cb(null, true); // session is valid
+                    }
+                    else {
+                        cb(null, false); // session expired
+                    }
                 }
                 else {
-                    callback(null, false);
+                    cb(null, false); // session expired
                 }
             });
         };
