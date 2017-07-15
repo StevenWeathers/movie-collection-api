@@ -113,7 +113,7 @@ const user = {
     },
     getUserByEmail: (email, cb) => {
 
-        collection.findOne({ email }, (err, foundUser) => {
+        User.findOne({ email }, (err, foundUser) => {
 
             cb(err, foundUser);
         });

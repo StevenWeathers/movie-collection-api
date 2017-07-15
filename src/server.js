@@ -95,14 +95,14 @@ server.register(HapiAuthJWT, (err) => {
 
                 if (!err) {
                     if (foundUser) {
-                        cb(null, true); // session is valid
+                        callback(null, true); // session is valid
                     }
                     else {
-                        cb(null, false); // session expired
+                        callback(null, false); // session expired
                     }
                 }
                 else {
-                    cb(null, false); // session expired
+                    callback(null, false); // session expired
                 }
             });
         };
@@ -171,7 +171,6 @@ server.route({
     method: 'GET',
     path: '/users',
     config: {
-        auth: false, // @TODO - remove this when Unit Tests can auth properly
         handler: (request, reply) => {
 
             const defaultData = `
@@ -198,7 +197,6 @@ server.route({
     method: 'GET',
     path: '/users/{id}',
     config: {
-        auth: false, // @TODO - remove this when Unit Tests can auth properly
         handler: (request, reply) => {
 
             const userId = request.params.id;
@@ -232,7 +230,6 @@ server.route({
     method: 'POST',
     path: '/users',
     config: {
-        auth: false, // @TODO - remove this when Unit Tests can auth properly
         handler: (request, reply) => {
 
             const user = request.payload;
@@ -266,7 +263,6 @@ server.route({
     method: 'PUT',
     path: '/users/{id}',
     config: {
-        auth: false, // @TODO - remove this when Unit Tests can auth properly
         handler: (request, reply) => {
 
             const userId = request.params.id;
@@ -304,7 +300,6 @@ server.route({
     method: 'DELETE',
     path: '/users/{id}',
     config: {
-        auth: false, // @TODO - remove this when Unit Tests can auth properly
         handler: (request, reply) => {
 
             const userId = request.params.id;
@@ -370,7 +365,6 @@ server.route({
     method: 'POST',
     path: '/movies',
     config: {
-        auth: false, // @TODO - remove this when Unit Tests can auth properly
         handler: (request, reply) => {
 
             const movie = request.payload;
@@ -455,7 +449,6 @@ server.route({
     method: 'PUT',
     path: '/movies/{id}',
     config: {
-        auth: false, // @TODO - remove this when Unit Tests can auth properly
         handler: (request, reply) => {
 
             const movieId = request.params.id;
@@ -497,7 +490,6 @@ server.route({
     method: 'DELETE',
     path: '/movies/{id}',
     config: {
-        auth: false, // @TODO - remove this when Unit Tests can auth properly
         handler: (request, reply) => {
 
             const movieId = request.params.id;
@@ -564,7 +556,6 @@ server.route({
     method: 'POST',
     path: '/formats',
     config: {
-        auth: false, // @TODO - remove this when Unit Tests can auth properly
         handler: (request, reply) => {
 
             const format = request.payload;
@@ -646,7 +637,6 @@ server.route({
     method: 'PUT',
     path: '/formats/{id}',
     config: {
-        auth: false, // @TODO - remove this when Unit Tests can auth properly
         handler: (request, reply) => {
 
             const formatId = request.params.id;
@@ -689,7 +679,6 @@ server.route({
     method: 'DELETE',
     path: '/formats/{id}',
     config: {
-        auth: false, // @TODO - remove this when Unit Tests can auth properly
         handler: (request, reply) => {
 
             const formatId = request.params.id;

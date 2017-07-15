@@ -14,8 +14,11 @@ const expect = Lab.expect;
 // require hapi server
 const Server = require('../src/server.js');
 const FormatModel = require('../src/models/Format.js');
+const UserModel = require('../src/models/User.js');
 
 describe('Format Routes', () => {
+
+    let token;
 
     before((done) => {
 
@@ -25,7 +28,23 @@ describe('Format Routes', () => {
         Sinon.stub(FormatModel, 'updateFormat');
         Sinon.stub(FormatModel, 'deleteFormat');
 
-        done();
+        Sinon.stub(UserModel, 'validatePassword');
+        Sinon.stub(UserModel, 'getUserByEmail');
+
+        UserModel.validatePassword.yields(null, true);
+
+        Server.inject({
+            method: 'POST',
+            url: '/auth',
+            payload: {
+                email: 'steven@weathers.me',
+                password: 'vendetta2017'
+            }
+        }, (response) => {
+
+            token = JSON.parse(response.payload).token;
+            done();
+        });
     });
 
     after((done) => {
@@ -35,6 +54,9 @@ describe('Format Routes', () => {
         FormatModel.createFormat.restore();
         FormatModel.updateFormat.restore();
         FormatModel.deleteFormat.restore();
+
+        UserModel.validatePassword.restore();
+        UserModel.getUserByEmail.restore();
 
         done();
     });
@@ -137,6 +159,8 @@ describe('Format Routes', () => {
 
     it('should add a new format', (done) => {
 
+        UserModel.getUserByEmail.yields(null, { email: 'steven@weathers.me' }); // to pass jwt auth
+
         const formatPayload = {
             title: '4K Bluray'
         };
@@ -151,7 +175,9 @@ describe('Format Routes', () => {
             method: 'POST',
             url: '/formats',
             payload: formatPayload,
-            headers: {}
+            headers: {
+                Authorization: `${token}`
+            }
         }, (response) => {
 
             expect(response.statusCode).to.equal(200);
@@ -167,6 +193,8 @@ describe('Format Routes', () => {
 
     it('should throw error when adding a format fails', (done) => {
 
+        UserModel.getUserByEmail.yields(null, { email: 'steven@weathers.me' }); // to pass jwt auth
+
         const formatPayload = {
             title: '4K Bluray'
         };
@@ -177,7 +205,9 @@ describe('Format Routes', () => {
             method: 'POST',
             url: '/formats',
             payload: formatPayload,
-            headers: {}
+            headers: {
+                Authorization: `${token}`
+            }
         }, (response) => {
 
             expect(response.statusCode).to.equal(500);
@@ -188,6 +218,8 @@ describe('Format Routes', () => {
     });
 
     it('should update a format', (done) => {
+
+        UserModel.getUserByEmail.yields(null, { email: 'steven@weathers.me' }); // to pass jwt auth
 
         const _id = '59586ecb1d814b0016ce423b';
         const formatPayload = {
@@ -204,7 +236,9 @@ describe('Format Routes', () => {
             method: 'PUT',
             url: `/formats/${_id}`,
             payload: formatPayload,
-            headers: {}
+            headers: {
+                Authorization: `${token}`
+            }
         }, (response) => {
 
             expect(response.statusCode).to.equal(200);
@@ -222,6 +256,8 @@ describe('Format Routes', () => {
 
     it('should not a format when nothing is changed', (done) => {
 
+        UserModel.getUserByEmail.yields(null, { email: 'steven@weathers.me' }); // to pass jwt auth
+
         const _id = '59586ecb1d814b0016ce423b';
         const formatPayload = {
             title: '4K Bluray'
@@ -237,7 +273,9 @@ describe('Format Routes', () => {
             method: 'PUT',
             url: `/formats/${_id}`,
             payload: formatPayload,
-            headers: {}
+            headers: {
+                Authorization: `${token}`
+            }
         }, (response) => {
 
             expect(response.statusCode).to.equal(200);
@@ -255,6 +293,8 @@ describe('Format Routes', () => {
 
     it('should throw error when updating a format fails', (done) => {
 
+        UserModel.getUserByEmail.yields(null, { email: 'steven@weathers.me' }); // to pass jwt auth
+
         const _id = '59586ecb1d814b0016ce423b';
         const formatPayload = {
             title: '4K Bluray'
@@ -266,7 +306,9 @@ describe('Format Routes', () => {
             method: 'PUT',
             url: `/formats/${_id}`,
             payload: formatPayload,
-            headers: {}
+            headers: {
+                Authorization: `${token}`
+            }
         }, (response) => {
 
             expect(response.statusCode).to.equal(500);
@@ -278,6 +320,8 @@ describe('Format Routes', () => {
 
     it('should delete a format', (done) => {
 
+        UserModel.getUserByEmail.yields(null, { email: 'steven@weathers.me' }); // to pass jwt auth
+
         const _id = '59586ecb1d814b0016ce423b';
 
         FormatModel.deleteFormat.yields(null, { deletedCount: 1 });
@@ -285,7 +329,9 @@ describe('Format Routes', () => {
         Server.inject({
             method: 'DELETE',
             url: `/formats/${_id}`,
-            headers: {}
+            headers: {
+                Authorization: `${token}`
+            }
         }, (response) => {
 
             expect(response.statusCode).to.equal(200);
@@ -303,6 +349,8 @@ describe('Format Routes', () => {
 
     it('should not delete a format if it doesnt exist', (done) => {
 
+        UserModel.getUserByEmail.yields(null, { email: 'steven@weathers.me' }); // to pass jwt auth
+
         const _id = '59586ecb1d814b0016ce423b';
 
         FormatModel.deleteFormat.yields(null, { deletedCount: 0 });
@@ -310,7 +358,9 @@ describe('Format Routes', () => {
         Server.inject({
             method: 'DELETE',
             url: `/formats/${_id}`,
-            headers: {}
+            headers: {
+                Authorization: `${token}`
+            }
         }, (response) => {
 
             expect(response.statusCode).to.equal(200);
@@ -328,6 +378,8 @@ describe('Format Routes', () => {
 
     it('should throw error when deleting a format fails', (done) => {
 
+        UserModel.getUserByEmail.yields(null, { email: 'steven@weathers.me' }); // to pass jwt auth
+
         const _id = '59586ecb1d814b0016ce423b';
 
         FormatModel.deleteFormat.yields(new Error('ERROR!'));
@@ -335,7 +387,9 @@ describe('Format Routes', () => {
         Server.inject({
             method: 'DELETE',
             url: `/formats/${_id}`,
-            headers: {}
+            headers: {
+                Authorization: `${token}`
+            }
         }, (response) => {
 
             expect(response.statusCode).to.equal(500);

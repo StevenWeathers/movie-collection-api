@@ -17,6 +17,8 @@ const UserModel = require('../src/models/User.js');
 
 describe('User Routes', () => {
 
+    let token;
+
     before((done) => {
 
         Sinon.stub(UserModel, 'getUsers');
@@ -25,8 +27,22 @@ describe('User Routes', () => {
         Sinon.stub(UserModel, 'updateUser');
         Sinon.stub(UserModel, 'deleteUser');
         Sinon.stub(UserModel, 'validatePassword');
+        Sinon.stub(UserModel, 'getUserByEmail');
 
-        done();
+        UserModel.validatePassword.yields(null, true);
+
+        Server.inject({
+            method: 'POST',
+            url: '/auth',
+            payload: {
+                email: 'steven@weathers.me',
+                password: 'vendetta2017'
+            }
+        }, (response) => {
+
+            token = JSON.parse(response.payload).token;
+            done();
+        });
     });
 
     after((done) => {
@@ -37,11 +53,14 @@ describe('User Routes', () => {
         UserModel.updateUser.restore();
         UserModel.deleteUser.restore();
         UserModel.validatePassword.restore();
+        UserModel.getUserByEmail.restore();
 
         done();
     });
 
     it('should get all users', (done) => {
+
+        UserModel.getUserByEmail.yields(null, { email: 'steven@weathers.me' }); // to pass jwt auth
 
         UserModel.getUsers.yields(null, [
             {
@@ -52,7 +71,10 @@ describe('User Routes', () => {
 
         Server.inject({
             method: 'GET',
-            url: '/users'
+            url: '/users',
+            headers: {
+                Authorization: `${token}`
+            }
         }, (response) => {
 
             expect(response.statusCode).to.equal(200);
@@ -73,6 +95,8 @@ describe('User Routes', () => {
 
     it('should get a user by id', (done) => {
 
+        UserModel.getUserByEmail.yields(null, { email: 'steven@weathers.me' }); // to pass jwt auth
+
         const UserId = '59586ecb1d814b0016ce423b';
 
         UserModel.getUser.yields(null, {
@@ -82,7 +106,10 @@ describe('User Routes', () => {
 
         Server.inject({
             method: 'GET',
-            url: `/users/${UserId}`
+            url: `/users/${UserId}`,
+            headers: {
+                Authorization: token
+            }
         }, (response) => {
 
             expect(response.statusCode).to.equal(200);
@@ -101,6 +128,8 @@ describe('User Routes', () => {
 
     it('should add a new User', (done) => {
 
+        UserModel.getUserByEmail.yields(null, { email: 'steven@weathers.me' }); // to pass jwt auth
+
         const UserPayload = {
             email: 'steven@weathers.me',
             password: 'vendetta2017'
@@ -113,7 +142,9 @@ describe('User Routes', () => {
             method: 'POST',
             url: '/users',
             payload: UserPayload,
-            headers: {}
+            headers: {
+                Authorization: token
+            }
         }, (response) => {
 
             expect(response.statusCode).to.equal(200);
@@ -131,6 +162,8 @@ describe('User Routes', () => {
 
         it('should fail to add a new User', (done) => {
 
+            UserModel.getUserByEmail.yields(null, { email: 'steven@weathers.me' }); // to pass jwt auth
+
             const UserPayload = {
                 email: 'steven@weathers.me',
                 password: 'vendetta'
@@ -143,7 +176,9 @@ describe('User Routes', () => {
                 method: 'POST',
                 url: '/users',
                 payload: UserPayload,
-                headers: {}
+                headers: {
+                    Authorization: token
+                }
             }, (response) => {
 
                 expect(response.statusCode).to.equal(400);
@@ -155,6 +190,8 @@ describe('User Routes', () => {
     });
 
     it('should update a User', (done) => {
+
+        UserModel.getUserByEmail.yields(null, { email: 'steven@weathers.me' }); // to pass jwt auth
 
         const _id = '59586ecb1d814b0016ce423b';
         const UserPayload = {
@@ -171,7 +208,9 @@ describe('User Routes', () => {
             method: 'PUT',
             url: `/users/${_id}`,
             payload: UserPayload,
-            headers: {}
+            headers: {
+                Authorization: token
+            }
         }, (response) => {
 
             expect(response.statusCode).to.equal(200);
@@ -189,6 +228,8 @@ describe('User Routes', () => {
 
     it('should delete a User', (done) => {
 
+        UserModel.getUserByEmail.yields(null, { email: 'steven@weathers.me' }); // to pass jwt auth
+
         const _id = '59586ecb1d814b0016ce423b';
 
         UserModel.deleteUser.yields(null, { deletedCount: 1 });
@@ -196,7 +237,9 @@ describe('User Routes', () => {
         Server.inject({
             method: 'DELETE',
             url: `/users/${_id}`,
-            headers: {}
+            headers: {
+                Authorization: token
+            }
         }, (response) => {
 
             expect(response.statusCode).to.equal(200);
@@ -226,8 +269,7 @@ describe('User Routes', () => {
             Server.inject({
                 method: 'POST',
                 url: '/auth',
-                payload: UserPayload,
-                headers: {}
+                payload: UserPayload
             }, (response) => {
 
                 expect(response.statusCode).to.equal(200);
@@ -252,8 +294,7 @@ describe('User Routes', () => {
             Server.inject({
                 method: 'POST',
                 url: '/auth',
-                payload: UserPayload,
-                headers: {}
+                payload: UserPayload
             }, (response) => {
 
                 expect(response.statusCode).to.equal(401);
@@ -278,8 +319,7 @@ describe('User Routes', () => {
             Server.inject({
                 method: 'POST',
                 url: '/auth',
-                payload: UserPayload,
-                headers: {}
+                payload: UserPayload
             }, (response) => {
 
                 expect(response.statusCode).to.equal(500);

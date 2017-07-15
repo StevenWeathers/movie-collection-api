@@ -14,8 +14,11 @@ const expect = Lab.expect;
 // require hapi server
 const Server = require('../src/server.js');
 const MovieModel = require('../src/models/Movie.js');
+const UserModel = require('../src/models/User.js');
 
 describe('Movie Routes', () => {
+
+    let token;
 
     before((done) => {
 
@@ -25,7 +28,23 @@ describe('Movie Routes', () => {
         Sinon.stub(MovieModel, 'updateMovie');
         Sinon.stub(MovieModel, 'deleteMovie');
 
-        done();
+        Sinon.stub(UserModel, 'validatePassword');
+        Sinon.stub(UserModel, 'getUserByEmail');
+
+        UserModel.validatePassword.yields(null, true);
+
+        Server.inject({
+            method: 'POST',
+            url: '/auth',
+            payload: {
+                email: 'steven@weathers.me',
+                password: 'vendetta2017'
+            }
+        }, (response) => {
+
+            token = JSON.parse(response.payload).token;
+            done();
+        });
     });
 
     after((done) => {
@@ -35,6 +54,9 @@ describe('Movie Routes', () => {
         MovieModel.createMovie.restore();
         MovieModel.updateMovie.restore();
         MovieModel.deleteMovie.restore();
+
+        UserModel.validatePassword.restore();
+        UserModel.getUserByEmail.restore();
 
         done();
     });
@@ -123,6 +145,8 @@ describe('Movie Routes', () => {
 
     it('should add a new movie', (done) => {
 
+        UserModel.getUserByEmail.yields(null, { email: 'steven@weathers.me' }); // to pass jwt auth
+
         const moviePayload = {
             title: 'Batman Begins',
             year: '2005',
@@ -142,7 +166,9 @@ describe('Movie Routes', () => {
             method: 'POST',
             url: '/movies',
             payload: moviePayload,
-            headers: {}
+            headers: {
+                Authorization: `${token}`
+            }
         }, (response) => {
 
             expect(response.statusCode).to.equal(200);
@@ -157,6 +183,8 @@ describe('Movie Routes', () => {
     });
 
     it('should update a movie', (done) => {
+
+        UserModel.getUserByEmail.yields(null, { email: 'steven@weathers.me' }); // to pass jwt auth
 
         const _id = '59586ecb1d814b0016ce423b';
         const moviePayload = {
@@ -178,7 +206,9 @@ describe('Movie Routes', () => {
             method: 'PUT',
             url: `/movies/${_id}`,
             payload: moviePayload,
-            headers: {}
+            headers: {
+                Authorization: `${token}`
+            }
         }, (response) => {
 
             expect(response.statusCode).to.equal(200);
@@ -196,6 +226,8 @@ describe('Movie Routes', () => {
 
     it('should delete a movie', (done) => {
 
+        UserModel.getUserByEmail.yields(null, { email: 'steven@weathers.me' }); // to pass jwt auth
+
         const _id = '59586ecb1d814b0016ce423b';
 
         MovieModel.deleteMovie.yields(null, { deletedCount: 1 });
@@ -203,7 +235,9 @@ describe('Movie Routes', () => {
         Server.inject({
             method: 'DELETE',
             url: `/movies/${_id}`,
-            headers: {}
+            headers: {
+                Authorization: `${token}`
+            }
         }, (response) => {
 
             expect(response.statusCode).to.equal(200);
