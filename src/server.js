@@ -1,6 +1,7 @@
 'use strict';
 
 const Hapi = require('hapi');
+const Wreck = require('wreck');
 const Joi = require('joi');
 const PasswordSheriff = require('password-sheriff');
 Joi.objectId = require('joi-objectid')(Joi);
@@ -28,6 +29,9 @@ const serverPort = process.env.PORT || 8080;
 const secretKey = process.env.jwtkey || 'everythingisawesome';
 const jwtAlgorithm = process.env.jwtalgo || 'HS256';
 const jwtExpires = process.env.jwtexpires || '1h';
+// TMDB settings
+const tmdbAuth = process.env.tmdbAuth || '508f0deb34b8dbe4872571e0f6101a5e';
+const tmdbHost = process.env.tmdbHost || 'api.themoviedb.org';
 /* $lab:coverage:on$ */
 
 // Joi Validation Schemas
@@ -716,6 +720,35 @@ server.route({
         validate: {
             params: {
                 id: Joi.objectId()
+            }
+        }
+    }
+});
+
+// Route to attempt to match movie to TMDB
+server.route({
+    method: 'GET',
+    path: '/match-tmdb',
+    config: {
+        auth: false,
+        handler: async (request, reply) => {
+
+            const title = request.query.title;
+
+            try {
+                const tmdbConfig = await Wreck.get(`https://${tmdbHost}/3/configuration?api_key=${tmdbAuth}`, { json: true });
+                const { payload } = await Wreck.get(`https://${tmdbHost}/3/search/movie?api_key=${tmdbAuth}&language=en-US&page=1&include_adult=false&query=${title}`, { json: true });
+
+                payload.image_base_url = tmdbConfig.payload.images.base_url;
+
+                reply(payload);
+            } catch (e) {
+                reply(e);
+            }
+        },
+        validate: {
+            query: {
+                title: Joi.string().required()
             }
         }
     }
