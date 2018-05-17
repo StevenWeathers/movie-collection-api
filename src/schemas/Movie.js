@@ -92,11 +92,16 @@ const MoviesSchema = new GraphQLSchema({
             },
             movies: {
                 type: new GraphQLList(Movie),
+                args: { // arguments we accept from the query
+                    title: {
+                        type: GraphQLString
+                    }
+                },
                 resolve: (_, args) => {
 
                     const foundMovies = new Promise((resolve, reject) => {
 
-                        MovieModel.getMovies((err, movies) => {
+                        MovieModel.getMovies(args.title, (err, movies) => {
 
                             err ? reject(err) : resolve(movies);
                         });

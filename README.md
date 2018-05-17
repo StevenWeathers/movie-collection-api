@@ -193,6 +193,31 @@ Authentication is required for all Modification (Create, Update, Delete) tasks
 }
 ```
 
+## Example Search Movies
+### Path
+```
+  /search/batman
+```
+### Response
+```
+{
+    "data": {
+        "movies": [
+            {
+                "_id": "59586ecb1d814b0016ce423b",
+                "title": "Batman Begins",
+                "slug": "batman-begins",
+                "year": "2005",
+                "format": "Bluray",
+                "tmdb_id": "123",
+                "tmdb_image_url": "http://someurl",
+                "upc": "1337009"
+            }
+        ]
+    }
+}
+```
+
 # Movie Formats
 
 ## Example GET Formats

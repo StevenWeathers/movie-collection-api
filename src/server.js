@@ -725,6 +725,46 @@ server.route({
     }
 });
 
+// Route to search for movies by title
+server.route({
+    method: 'GET',
+    path: '/search/{title}',
+    config: {
+        auth: false,
+        handler: (request, reply) => {
+
+            const title = request.params.title;
+
+            const defaultData = `
+                {
+                    movies(title: "${title}") {
+                        _id
+                        title
+                        slug
+                        year
+                        format
+                        tmdb_id
+                        tmdb_image_url
+                        upc
+                    }
+                }
+            `;
+
+            const requestedData = (request.query.query) ? request.query.query : defaultData;
+
+            return graphql(MoviesSchema, requestedData).then((response) => {
+
+                return reply(response);
+            });
+        },
+        validate: {
+            params: {
+                title: Joi.string()
+            }
+        }
+    }
+});
+
 // Route to attempt to match movie to TMDB
 server.route({
     method: 'GET',

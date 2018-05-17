@@ -18,9 +18,11 @@ schema.index({ 'slug': 1 }, { unique: true });
 const Movie = Mongoose.model('Movie', schema);
 
 const movie = {
-    getMovies: (cb) => {
+    getMovies: (title, cb) => {
 
-        const query = Movie.find({});
+        const findBy = title ? { title: new RegExp(title, 'i') } : {};
+
+        const query = Movie.find(findBy);
 
         query.exec((err, movies) => {
 
